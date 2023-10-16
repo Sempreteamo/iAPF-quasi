@@ -331,7 +331,7 @@ n <- L
 
 ####Initialization####
 Init <- function(){
-  output <- init_APF()
+  output <- init_APF(w = 0, X = 0)
   X_apf <- output[[1]]
   w_apf <- output[[2]]
   Z_apf <- output[[3]]
