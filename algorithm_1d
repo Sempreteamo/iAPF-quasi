@@ -355,7 +355,7 @@ for(n in seq(400,400,20)){
   #I didn't include any resampling in this step
   #Run iAPF with the initial distribution we defined 
   
-  output <- init_changemu(w, X)
+  output <- init_APF(w, X)
   X_apf <- output[[1]]
   w_apf <- output[[2]]
   Z_apf <- output[[3]]
