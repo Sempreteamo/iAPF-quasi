@@ -45,9 +45,13 @@ Z_apf <- vector()
 #the mean, variance of the smoothing distribution and normalizing constant
 fkf.obj <- fkf(a0, P0, dt, ct, Tt, Zt, Ht, Gt, yt = t(obs))
 fks.obj <- fks(fkf.obj)
-fks_mean <- fks.obj$ahatt[,Time]
-fks_var <- fks.obj$Vt[,,Time]
 fkf.obj_Z <- fkf(a0, P0, dt, ct, Tt, Zt, Ht, Gt, yt = t(obs))$logLik
+
+Smoothing <- function(specific_time){
+  fks_mean <- fks.obj$ahatt[,specific_time]
+  fks_var <- fks.obj$Vt[,,specific_time]
+  return(list(fks_mean, fks_var))
+}
 
 #ess resampling
 ESS <- function(t,w, is.log=FALSE){
@@ -166,7 +170,7 @@ init_APF <- function(w, X){
   #when n = kL, we use the new distribution
   if(n == L){
     X_init[n-L+1,] <- rnorm(N[l])  
-    w_init[n-L+1,] <- dnorm(X_init[n-L+1,],obs[n-L+1], log = TRUE)
+    w_init[n-L+1,] <- dnorm(X_init[n-L+1,], obs[n-L+1], log = TRUE)
   }else{
     X_init[n-L+1,] <- change_mu(w, X)[[1]]
     w_ <- change_mu(w, X)[[2]]
@@ -178,13 +182,13 @@ init_APF <- function(w, X){
   
   for(t in (n-L+2):n){
     
-    if(ESS(t,w_init, is.log=TRUE) <= kappa*N[l]){
+    if(ESS(t, w_init, is.log=TRUE) <= kappa*N[l]){
       re = re + 1
       mx <- max(w_init[t-1,])
-      w_ <- exp(w_init[t-1,]-mx)/sum(exp(w_init[t-1,] - mx))
+      w_ <- exp(w_init[t-1,] - mx)/sum(exp(w_init[t-1,] - mx))
       Z_apf[1] = Z_apf[1] + log(mean(exp(w_init[t-1,] - mx))) + mx
-      mix <- sample(1:N[l],N[l], replace = TRUE, prob = w_)
-      X_init[t,] <- X_init[t,mix]
+      mix <- sample(1:N[l], N[l], replace = TRUE, prob = w_)
+      X_init[t,] <- X_init[t, mix]
       
       X_init[t,1:N[l]] <- rnorm(N[l]) + A*X_init[t-1, mix]   
       w_init[t,1:N[l]] <- dnorm(X_init[t,], obs[t], log = TRUE) 
@@ -331,7 +335,7 @@ n <- L
 
 ####Initialization####
 Init <- function(){
-  output <- init_APF(w = 0, X = 0)
+  output <- init_APF()
   X_apf <- output[[1]]
   w_apf <- output[[2]]
   Z_apf <- output[[3]]
@@ -350,7 +354,7 @@ w <- output[[2]]
 Z <- output[[3]]
 
 ####Algorithm####
-for(n in seq(400,400,20)){
+for(n in seq(2*L,Time,L)){
   
   #I didn't include any resampling in this step
   #Run iAPF with the initial distribution we defined 
@@ -371,11 +375,19 @@ Z <- Z + log(mean(exp(w[Time,]-mx))) + mx
 
 #Calculation of the mean and variance of empirical distribution
 #Here 'weighted_mean' is the empirical mean, 'variance' is the empirical variance
-w_ <- exp(w[Time,]-mx)/sum(exp(w[Time,] - mx))
-weighted_mean <- sum(w_*X[Time,])
-s_mean <- sum(w_*X[Time,]^2)
-variance <- s_mean - weighted_mean^2
+Empirical <- function(specific_time){
+  mx <- max(w[specific_time,]) 
+  w_ <- exp(w[specific_time,]-mx)/sum(exp(w[specific_time,] - mx))
+  weighted_mean <- sum(w_*X[specific_time,])
+  s_mean <- sum(w_*X[specific_time,]^2)
+  variance <- s_mean - weighted_mean^2
+  return(list(weighted_mean, variance))
+}
 
+weighted_mean <- Empirical(Time)[[1]]
+variance <- Empirical(Time)[[2]]
+fks_mean <- Smoothing(Time)[[1]]
+fks_var <- Smoothing(Time)[[2]]
 #empirical distribution function
 #the equations of G and dKS(F, G) below are in the notes
 
@@ -390,7 +402,7 @@ G <- function(x){
 }
 
 #dks(F,G)
-dKS <- function(){
+dKS <- function(Time, Num){
   d <- vector()
   for(i in 1:Num){
     f <- pnorm(X[Time,i], mean = fks_mean, sd = sqrt(fks_var))
@@ -399,7 +411,7 @@ dKS <- function(){
   return(max(d))
 }
 
-dKS <- dKS()
+dKS <- dKS(Time, Num)
 normalizing_c <- exp(Z-fkf.obj_Z)
 
 #Note that the normalizing constant here is just the values calculated within each 
