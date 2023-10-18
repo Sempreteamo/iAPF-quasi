@@ -114,14 +114,14 @@ init_APF <- function(w, X){
   #when n = L, we use the mu as the initialization distribution mu; 
   #when n = kL, we use the new distribution
   if(n == L){
-    X_init[n-L+1,] <- rnorm(N[l])  
-    w_init[n-L+1,] <- dnorm(X_init[n-L+1,], obs[n-L+1], log = TRUE)
+    X_init[1:(n-L+1),] <- rnorm(N[l])  
+    w_init[1:(n-L+1),] <- dnorm(X_init[n-L+1,], obs[n-L+1], log = TRUE)
   }else{
-    X_init[n-L+1,] <- change_mu(w, X)[[1]]
+    X_init[1:(n-L+1),] <- change_mu(w, X)[[1]]
     w_ <- change_mu(w, X)[[2]]
     
     for (i in 1:Num){
-      w_init[n-L+1, i] <- log(sum(w_*dnorm(X_init[n-L+1,], A*X[n-L,i], B)))
+      w_init[1:(n-L+1), i] <- log(sum(w_*dnorm(X_init[n-L+1,], A*X[n-L,i], B)))
     }
   }
   
@@ -133,9 +133,9 @@ init_APF <- function(w, X){
       w_ <- exp(w_init[t-1,] - mx)/sum(exp(w_init[t-1,] - mx))
       Z_apf[1] = Z_apf[1] + log(mean(exp(w_init[t-1,] - mx))) + mx
       mix <- sample(1:N[l], N[l], replace = TRUE, prob = w_)
-      X_init[t,] <- X_init[t, mix]
+      X_init[1:(t-1),] <- X_init[1:(t-1), mix]
       
-      X_init[t,1:N[l]] <- rnorm(N[l]) + A*X_init[t-1, mix]   
+      X_init[t,1:N[l]] <- rnorm(N[l]) + A*X_init[t-1, ]   
       w_init[t,1:N[l]] <- dnorm(X_init[t,], obs[t], log = TRUE) 
       
     }else{
@@ -160,15 +160,15 @@ APF <- function(w, X, psi_pa, l, Z_apf, N){
   
   #when n = kL, we use the new mu.tilda to initialize particles
   if(n == L){
-    X_apf[n-L+1,1:N[l]] <- mu_aux(psi_pa, l, N, n-L+1) 
+    X_apf[1:(n-L+1),1:N[l]] <- mu_aux(psi_pa, l, N, n-L+1) 
     for(i in 1:N[l]){
-      w_apf[n-L+1,i] <- log(g_aux(obs[n-L+1], X_apf[n-L+1,i],n-L+1, psi_pa, n)) 
+      w_apf[1:(n-L+1),i] <- log(g_aux(obs[n-L+1], X_apf[n-L+1,i],n-L+1, psi_pa, n)) 
     }
   }else{
-    X_apf[n-L+1,1:N[l]] <- change_mupsi(w, X, psi_pa, n-L+1, N, l)[[1]]
+    X_apf[1:(n-L+1),1:N[l]] <- change_mupsi(w, X, psi_pa, n-L+1, N, l)[[1]]
     w_ <- change_mupsi(w, X, psi_pa, n-L+1, N, l)[[2]]
     for (i in 1:N[l]){
-      w_apf[n-L+1, i] <- log(sum(w_*dnorm(X_apf[n-L+1,], (psi_pa[n-L+1,2]^2*A*X[n-L,i] +psi_pa[n-L+1,1])/(psi_pa[n-L+1,2]^2+1),
+      w_apf[1:(n-L+1), i] <- log(sum(w_*dnorm(X_apf[n-L+1,], (psi_pa[n-L+1,2]^2*A*X[n-L,i] +psi_pa[n-L+1,1])/(psi_pa[n-L+1,2]^2+1),
                                           sqrt(psi_pa[n-L+1,2]^2 / (psi_pa[n-L+1,2]^2+1)))))
     }
   }
@@ -181,10 +181,10 @@ APF <- function(w, X, psi_pa, l, Z_apf, N){
       w_ <- exp(w_apf[t-1,1:N[l]]-mx)/sum(exp(w_apf[t-1, 1:N[l]] - mx))
       Z_apf[l] = Z_apf[l] + log(mean(exp(w_apf[t-1,]-mx))) + mx
       mix <- sample(1:N[l],N[l], replace = TRUE, prob = w_)
-      X_apf[t,] <- X_apf[t,mix]
+      X_apf[1:(t-1),] <- X_apf[1:(t-1),mix]
       
       for(i in 1:N[l]){
-        X_apf[t,i] <- f_aux(X_apf[t-1, mix[i]], psi_pa, t)
+        X_apf[t,i] <- f_aux(X_apf[t-1, i], psi_pa, t)
         w_apf[t,i] <- log(g_aux(obs[t], X_apf[t,i], t, psi_pa, n))  
       }
     }else{
