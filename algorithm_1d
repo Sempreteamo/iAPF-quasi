@@ -109,20 +109,23 @@ Empirical <- function(specific_time){
   variance <- s_mean - weighted_mean^2
   return(list(weighted_mean, variance))
 }
+output_e <- Empirical(specific)
+output_s <- Smoothing(specific)
+weighted_mean <- output_e[[1]]
+variance <- output_e[[2]]
+fks_mean <- output_s[[1]]
+fks_var <- output_s[[2]]
 
-weighted_mean <- Empirical(specific)[[1]]
-variance <- Empirical(specific)[[2]]
-fks_mean <- Smoothing(specific)[[1]]
-fks_var <- Smoothing(specific)[[2]]
 #empirical distribution function
 #the equation of dKS(F, G) below is in the notes
 
 dKS <- function(specific_time) {
   d <- vector()
+  order <- order(X[specific_time,])
   X[specific_time,] <- sort(X[specific_time,])
-  w_ <- w_[order(X[specific_time,])]
+  w_ <- w_[order]
   cumsum_w <- cumsum(w_)
-  f <- pnorm(X[specific_time,], mean = fks_mean, sd = sqrt(fks_var))
+  f <- pnorm(X[specific_time,], mean = fks_mean, sd = sqrt(fks_var)) #pass
   d <- abs(f - cumsum_w)
   return(max(d))
 }
