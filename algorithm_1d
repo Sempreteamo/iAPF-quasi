@@ -9,6 +9,7 @@ Num <- 200
 N <- vector()
 N[1] <- Num
 Time = 400
+specific = Time
 L = 200
 A = 0.5
 B = 0.01
@@ -372,46 +373,38 @@ for(n in seq(2*L,Time,L)){
 } 
 mx <- max(w[Time,]) 
 Z <- Z + log(mean(exp(w[Time,]-mx))) + mx
+mx <- max(w[specific,]) 
+w_ <- exp(w[specific,]-mx)/sum(exp(w[specific,] - mx))
 
 #Calculation of the mean and variance of empirical distribution
 #Here 'weighted_mean' is the empirical mean, 'variance' is the empirical variance
 Empirical <- function(specific_time){
-  mx <- max(w[specific_time,]) 
-  w_ <- exp(w[specific_time,]-mx)/sum(exp(w[specific_time,] - mx))
   weighted_mean <- sum(w_*X[specific_time,])
   s_mean <- sum(w_*X[specific_time,]^2)
   variance <- s_mean - weighted_mean^2
   return(list(weighted_mean, variance))
 }
 
-weighted_mean <- Empirical(Time)[[1]]
-variance <- Empirical(Time)[[2]]
-fks_mean <- Smoothing(Time)[[1]]
-fks_var <- Smoothing(Time)[[2]]
+weighted_mean <- Empirical(specific)[[1]]
+variance <- Empirical(specific)[[2]]
+fks_mean <- Smoothing(specific)[[1]]
+fks_var <- Smoothing(specific)[[2]]
 #empirical distribution function
-#the equations of G and dKS(F, G) below are in the notes
+#the equation of dKS(F, G) below is in the notes
 
-G <- function(x){
-  weight = 0
-  for(i in 1:Num){
-    if(X[Time,i] <= x){
-      weight = w_[i] + weight
-    }
-  }
-  return(weight)
-}
-
-#dks(F,G)
-dKS <- function(Time, Num){
+dKS <- function(specific_time) {
   d <- vector()
+  X[specific_time,] <- sort(X[specific_time,])
+  w_ <- w_[order(X[specific_time,])]
   for(i in 1:Num){
-    f <- pnorm(X[Time,i], mean = fks_mean, sd = sqrt(fks_var))
-    d[i] <- abs(f - G(X[Time,i]))
+    cumulative_sum <- sum(w_[1:i])
+    f <- pnorm(X[specific_time,i], mean = fks_mean, sd = sqrt(fks_var))
+    d[i] <- abs(f - cumulative_sum)
   }
   return(max(d))
 }
 
-dKS <- dKS(Time, Num)
+dKS <- dKS(specific)
 normalizing_c <- exp(Z-fkf.obj_Z)
 
 #Note that the normalizing constant here is just the values calculated within each 
