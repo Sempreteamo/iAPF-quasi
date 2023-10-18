@@ -9,7 +9,7 @@ Num <- 200
 N <- vector()
 N[1] <- Num
 Time = 200
-specific = Time
+specific = Time #The specific time that we want to compare the distributions
 L = 100
 A = 0.5
 B = 0.01
@@ -58,6 +58,7 @@ Smoothing <- function(specific_time){
 n <- L
 
 source('only_iAPF_functions_1d.R')
+
 ####Initialization####
 Init <- function(){
   output <- init_APF()
@@ -120,11 +121,9 @@ dKS <- function(specific_time) {
   d <- vector()
   X[specific_time,] <- sort(X[specific_time,])
   w_ <- w_[order(X[specific_time,])]
-  for(i in 1:Num){
-    cumulative_sum <- sum(w_[1:i])
-    f <- pnorm(X[specific_time,i], mean = fks_mean, sd = sqrt(fks_var))
-    d[i] <- abs(f - cumulative_sum)
-  }
+  cumsum_w <- cumsum(w_)
+  f <- pnorm(X[specific_time,], mean = fks_mean, sd = sqrt(fks_var))
+  d <- abs(f - cumsum_w)
   return(max(d))
 }
 
