@@ -113,6 +113,7 @@ init_APF <- function(w, X){
   
   #when n = L, we use the mu as the initialization distribution mu; 
   #when n = kL, we use the new distribution
+  #I tried to modify the previous paths from 1 to n-L+1
   if(n == L){
     X_init[1:(n-L+1),] <- rnorm(N[l])  
     w_init[1:(n-L+1),] <- dnorm(X_init[n-L+1,], obs[n-L+1], log = TRUE)
