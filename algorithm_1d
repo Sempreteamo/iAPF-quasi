@@ -11,10 +11,10 @@ N[1] <- Num
 Time = 200
 specific = Time #The specific time that we want to compare the distributions
 L = 200 #lag
-A = 0.5
-B = 0.01
+A = 0.42
+B = 1
 C = 1
-D = 0.7
+D = 1
 d = 1
 k <- 5
 tau <- 0.5
