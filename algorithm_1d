@@ -5,12 +5,12 @@ library(FKF)
 ##parameters
 start = proc.time()
 set.seed(123)
-Num <- 200
+Num <- 200 #total number of particles
 N <- vector()
 N[1] <- Num
 Time = 200
 specific = Time #The specific time that we want to compare the distributions
-L = 100
+L = 20 #lag
 A = 0.5
 B = 0.01
 C = 1
@@ -94,10 +94,12 @@ for(n in seq(2*L,Time,L)){
   
   X <- output2[[2]]
   w <- output2[[3]]
-  Z <- output2[[4]]  
+  Z_update <- output2[[4]]  
+  
+  Z <- Z + Z_update
 } 
 mx <- max(w[Time,]) 
-Z <- Z + log(mean(exp(w[Time,]-mx))) + mx
+#Z <- Z + log(mean(exp(w[Time,]-mx))) + mx
 mx <- max(w[specific,]) 
 w_ <- exp(w[specific,]-mx)/sum(exp(w[specific,] - mx))
 
@@ -125,7 +127,7 @@ dKS <- function(specific_time) {
   X[specific_time,] <- sort(X[specific_time,])
   w_ <- w_[order]
   cumsum_w <- cumsum(w_)
-  f <- pnorm(X[specific_time,], mean = fks_mean, sd = sqrt(fks_var)) #pass
+  f <- pnorm(X[specific_time,], mean = fks_mean, sd = sqrt(fks_var)) 
   d <- abs(f - cumsum_w)
   return(max(d))
 }
