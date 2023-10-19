@@ -10,7 +10,7 @@ N <- vector()
 N[1] <- Num
 Time = 200
 specific = Time #The specific time that we want to compare the distributions
-L = 20 #lag
+L = 200 #lag
 A = 0.5
 B = 0.01
 C = 1
@@ -80,24 +80,26 @@ w <- output[[2]]
 Z <- output[[3]]
 
 ####Algorithm####
-for(n in seq(2*L,Time,L)){
-  
-  #I didn't include any resampling in this step
-  #Run iAPF with the initial distribution we defined 
-  
-  output <- init_APF(w, X)
-  X_apf <- output[[1]]
-  w_apf <- output[[2]]
-  Z_apf <- output[[3]]
-  
-  output2 <- psi_APF(n, X_apf, Z_apf, w, X)
-  
-  X <- output2[[2]]
-  w <- output2[[3]]
-  Z_update <- output2[[4]]  
-  
-  Z <- Z + Z_update
-} 
+if(L < Time){
+  for(n in seq(2*L,Time,L)){
+    
+    #I didn't include any resampling in this step
+    #Run iAPF with the initial distribution we defined 
+    
+    output <- init_APF(w, X)
+    X_apf <- output[[1]]
+    w_apf <- output[[2]]
+    Z_apf <- output[[3]]
+    
+    output2 <- psi_APF(n, X_apf, Z_apf, w, X)
+    
+    X <- output2[[2]]
+    w <- output2[[3]]
+    Z_update <- output2[[4]]  
+    
+    Z <- Z + Z_update
+  }  
+}
 mx <- max(w[Time,]) 
 #Z <- Z + log(mean(exp(w[Time,]-mx))) + mx
 mx <- max(w[specific,]) 
