@@ -1,0 +1,157 @@
+library(mvtnorm)
+library(MASS)
+library(FKF)
+
+##parameters
+start = proc.time()
+set.seed(123)
+Num <- 200 #total number of particles
+N <- vector()
+N[1] <- Num
+Time = 200
+specific = Time #The specific time that we want to compare the distributions
+L = 200 #lag
+A = 0.42
+B = 1
+C = 1
+D = 1
+d = 1
+k <- 5
+tau <- 0.5
+X_true <- vector()
+obs <- vector()
+kappa = 0.5
+dt <- ct <- 0
+Tt <- as.matrix(A)
+P0 <- Zt <- Ht <- Gt <- as.matrix(1)
+a0 <- 0
+index <- 1
+
+Obs <- function(){
+  X_true[1] <- rnorm(1)   
+  for(t in 2:Time){  #observations
+    X_true[t] <- rnorm(1) + A*X_true[t-1] 
+  }
+  return(rnorm(Time) + X_true)
+}
+obs <- Obs()
+
+#if we want to repeat the experiment, then start from here
+X <- matrix(NA, Time, Num)
+X_ <- matrix(NA, Time, Num)
+w <- matrix(NA, Time, Num)
+Z = 0
+Z_apf <- vector()
+
+#the mean, variance of the smoothing distribution and normalizing constant
+fkf.obj <- fkf(a0, P0, dt, ct, Tt, Zt, Ht, Gt, yt = t(obs))
+fks.obj <- fks(fkf.obj)
+fkf.obj_Z <- fkf(a0, P0, dt, ct, Tt, Zt, Ht, Gt, yt = t(obs))$logLik
+
+Smoothing <- function(specific_time){
+  fks_mean <- fks.obj$ahatt[,specific_time]
+  fks_var <- fks.obj$Vt[,,specific_time]
+  return(list(fks_mean, fks_var))
+}
+
+##Start our iAPF-quasi algorithm
+n <- L
+
+source('only_iAPF_functions_1d.R')
+
+####Initialization####
+Init <- function(){
+  output <- init_APF()
+  X_apf <- output[[1]]
+  w_apf <- output[[2]]
+  Z_apf <- output[[3]]
+  #X_apf_s <- output[[4]]
+  #w_apf_s <- output[[5]]
+  
+  #we need filtering particles 
+  output2 <- psi_APF(n, X_apf, Z_apf, w = 0, X = 0)
+  
+  #We just want smoothing particles to calculate
+  #X <- output2[[2]]
+  
+  #w <- output2[[3]]
+  Z <- output2[[4]]
+  X_s <- output2[[2]]
+  w_s <- output2[[3]] 
+  
+  return(list(X = X_s, w = w_s, Z = Z))
+}
+
+
+#we only need smoothing particles for the next calculation
+output <- Init() 
+X <- output[[1]] 
+w <- output[[2]]
+Z <- output[[3]]
+
+####Algorithm####
+if(L < Time){
+  for(n in seq(2*L,Time,L)){
+    
+    #I didn't include any resampling in this step
+    #Run iAPF with the initial distribution we defined 
+    
+    output <- init_APF(w, X)
+    X_apf <- output[[1]]
+    w_apf <- output[[2]]
+    Z_apf <- output[[3]]
+    #X_apf_s <- output[[4]]
+    #w_apf_s <- output[[5]]
+    
+    output2 <- psi_APF(n, X_apf, Z_apf, w, X)
+    
+    #smoothing particles
+    X <- output2[[2]]
+    w <- output2[[3]]
+    Z_update <- output2[[4]]  
+    
+    Z <- Z + Z_update
+  }  
+}
+mx <- max(w[Time,]) 
+#Z <- Z + log(mean(exp(w[Time,]-mx))) + mx
+mx <- max(w[specific,]) 
+w_ <- exp(w[specific,]-mx)/sum(exp(w[specific,] - mx))
+
+#Calculation of the mean and variance of empirical distribution
+#Here 'weighted_mean' is the empirical mean, 'variance' is the empirical variance
+Empirical <- function(specific_time){
+  weighted_mean <- sum(w_*X[specific_time,])
+  s_mean <- sum(w_*X[specific_time,]^2)
+  variance <- s_mean - weighted_mean^2
+  return(list(weighted_mean, variance))
+}
+output_e <- Empirical(specific)
+output_s <- Smoothing(specific)
+weighted_mean <- output_e[[1]]
+variance <- output_e[[2]]
+fks_mean <- output_s[[1]]
+fks_var <- output_s[[2]]
+
+#empirical distribution function
+#the equation of dKS(F, G) below is in the notes
+
+dKS <- function(specific_time) {
+  d <- vector()
+  order <- order(X[specific_time,])
+  X[specific_time,] <- sort(X[specific_time,])
+  w_ <- w_[order]
+  cumsum_w <- cumsum(w_)
+  f <- pnorm(X[specific_time,], mean = fks_mean, sd = sqrt(fks_var)) 
+  d <- abs(f - cumsum_w)
+  return(max(d))
+}
+
+KS_distance <- dKS(specific)
+normalizing_c <- exp(Z-fkf.obj_Z)
+
+#Note that the normalizing constant here is just the values calculated within each 
+#block from n-L+1 to n.It's not the real normalizing constant Z. 
+#It should be adjusted to get the value. 
+
+proc.time() - start
