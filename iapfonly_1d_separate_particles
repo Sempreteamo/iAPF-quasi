@@ -90,8 +90,13 @@ change_mu <- function(w, X){
 
 change_mupsi <- function(w, X, psi_pa, t, N, l){
   sample <- vector()
-  mx <- max(w[n-L,])
-  w_ <- exp(w[n-L,]-mx)/sum(exp(w[n-L,] - mx))
+ 
+  #here we need to adjust the weights
+  w_adj <- w[n-L,]*exp((psi_pa[t,2]^2*A*X[n-L,] +psi_pa[t,1])^2/(2*(psi_pa[t,2]^2+1)*psi_pa[t,2]^2) -
+                (psi_pa[t,2]^2*(A*X[n-L,])^2 + psi_pa[t,1]^2)/(2*psi_pa[t,2]^2))
+  
+  mx <- max(w_adj)
+  w_ <- exp(w_adj - mx)/sum(exp(w_adj - mx))
   s <- sample(1:Num, size = Num, replace = TRUE, prob = w_) 
   mus <- X[n-L,]
   for(i in 1:N[l]){
