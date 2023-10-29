@@ -57,7 +57,7 @@ Smoothing <- function(specific_time){
 ##Start our iAPF-quasi algorithm
 n <- L
 
-source('only_iAPF_functions_1d.R')
+source('iapfonly_1d_separate_particles.R')
 
 ####Initialization####
 Init <- function(){
