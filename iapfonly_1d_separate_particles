@@ -218,7 +218,7 @@ APF <- function(w, X, psi_pa, l, Z_apf, N){
         
         #smoothing particles
         X_apf_s[t,i] <- f_aux(X_apf_s[t-1, i], psi_pa, t)
-        w_apf_S[t,i] <- log(g_aux(obs[t], X_apf_s[t,i], t, psi_pa, n))  
+        w_apf_s[t,i] <- log(g_aux(obs[t], X_apf_s[t,i], t, psi_pa, n))  
       }
     }else{
       
