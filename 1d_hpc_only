@@ -4,7 +4,7 @@ library(FKF)
 
 ##parameters
 start = proc.time()
-set.seed(123)
+set.seed(1)
 Num <- 250 #total number of particles
 N <- vector()
 KS_distance <- vector()
@@ -21,7 +21,8 @@ D = 1
 d = 1
 k <- 5
 tau <- 0.5
-X_true <- vector()
+X_true <- vect
+or()
 obs <- vector()
 kappa = 0.5
 dt <- ct <- 0
@@ -41,7 +42,7 @@ obs <- Obs()
 
 
 #if we want to repeat the experiment, then start from here
-for(qq in 3:50){
+for(qq in 1:50){
   set.seed(qq)
   print(qq)
   X <- matrix(NA, Time, Num)
@@ -123,24 +124,25 @@ for(qq in 3:50){
   w_ <- exp(w[specific,]-mx)/sum(exp(w[specific,] - mx))
   
   #Calculation of the mean and variance of empirical distribution
-  #Here 'weighted_mean' is the empirical mean, 'variance' is the empirical variance
-  Empirical <- function(specific_time){
+  Empirical <- function(specific_time, w_){
     weighted_mean <- sum(w_*X[specific_time,])
     s_mean <- sum(w_*X[specific_time,]^2)
     variance <- s_mean - weighted_mean^2
     return(list(weighted_mean, variance))
   }
-  output_e <- Empirical(specific)
-  output_s <- Smoothing(specific)
+  #Here 'weighted_mean' is the empirical mean, 'variance' is the empirical variance
+  output_e <- Empirical(specific_time, w_)
   weighted_mean <- output_e[[1]]
   variance <- output_e[[2]]
-  fks_mean <- output_s[[1]]
-  fks_var <- output_s[[2]]
- 
+  
   #empirical distribution function
   #the equation of dKS(F, G) below is in the notes
   
-  dKS <- function(specific_time) {
+  dKS <- function(specific_time, w_) {
+    output_s <- Smoothing(specific_time)
+    fks_mean <- output_s[[1]]
+    fks_var <- output_s[[2]]
+    
     d <- vector()
     order <- order(X[specific_time,])
     X[specific_time,] <- sort(X[specific_time,])
@@ -154,14 +156,10 @@ for(qq in 3:50){
 KS_distance[qq] <- dKS(specific)
 normalizing_c <- exp(Z-fkf.obj_Z)
 
-output_e <- Empirical(specific1)
-output_s <- Smoothing(specific1)
-weighted_mean <- output_e[[1]]
-variance <- output_e[[2]]
-fks_mean <- output_s[[1]]
-fks_var <- output_s[[2]]
+mx <- max(w[specific1,]) 
+w_ <- exp(w[specific1,]-mx)/sum(exp(w[specific1,] - mx))
 
-KS_distance_start[qq] <- dKS(specific1)
+KS_distance_start[qq] <- dKS(specific1, w_)
 
 #Note that the normalizing constant here is just the values calculated within each 
 #block from n-L+1 to n.It's not the real normalizing constant Z. 
