@@ -4,13 +4,13 @@ library(FKF)
 
 ##parameters
 start = proc.time()
-set.seed(123)
+set.seed(1)
 Num <- 200 #total number of particles
 N <- vector()
 N[1] <- Num
-Time = 200
-specific = Time #The specific time that we want to compare the distributions
-L = 200 #lag
+Time = 500
+specific = Time-L+1 #The specific time that we want to compare the distributions
+L = 500 #lag
 A = 0.42
 B = 1
 C = 1
@@ -72,9 +72,6 @@ Init <- function(){
   output2 <- psi_APF(n, X_apf, Z_apf, w = 0, X = 0)
   
   #We just want smoothing particles to calculate
-  #X <- output2[[2]]
-  
-  #w <- output2[[3]]
   Z <- output2[[4]]
   X_s <- output2[[2]]
   w_s <- output2[[3]] 
