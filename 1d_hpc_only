@@ -10,10 +10,10 @@ N <- vector()
 KS_distance <- vector()
 KS_distance_start <- vector()
 N[1] <- Num
-Time = 500
+Time = 100 #The specific time that we want to compare the distributions
+L = 100 #lag
 specific1 = Time-L+1
-specific = Time #The specific time that we want to compare the distributions
-L = 500 #lag
+specific = Time
 A = 0.42
 B = 1
 C = 1
@@ -153,7 +153,7 @@ for(qq in 1:50){
     return(max(d))
   }
   
-KS_distance[qq] <- dKS(specific)
+KS_distance[qq] <- dKS(specific, w_)
 normalizing_c <- exp(Z-fkf.obj_Z)
 
 mx <- max(w[specific1,]) 
@@ -165,6 +165,6 @@ KS_distance_start[qq] <- dKS(specific1, w_)
 #block from n-L+1 to n.It's not the real normalizing constant Z. 
 #It should be adjusted to get the value. 
 }
-proc.time() - start
 
+proc.time() - start
 
