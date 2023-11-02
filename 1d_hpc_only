@@ -11,7 +11,8 @@ KS_distance <- vector()
 KS_distance_start <- vector()
 N[1] <- Num
 Time = 100 #The specific time that we want to compare the distributions
-L = 100 #lag
+L_candidate=c(500,250,100,50)
+L=L_candidate[(seed.label-1)%/%50+1] #lag
 specific1 = Time-L+1
 specific = Time
 A = 0.42
@@ -21,8 +22,7 @@ D = 1
 d = 1
 k <- 5
 tau <- 0.5
-X_true <- vect
-or()
+X_true <- vector()
 obs <- vector()
 kappa = 0.5
 dt <- ct <- 0
@@ -167,4 +167,5 @@ KS_distance_start[qq] <- dKS(specific1, w_)
 }
 
 proc.time() - start
+
 
