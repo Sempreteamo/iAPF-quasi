@@ -1,0 +1,143 @@
+library(parallel)
+library(mvtnorm)
+library(MASS)
+library(FKF)
+
+##parameters
+start = proc.time()
+set.seed(1)
+Num <- 1000 #total number of particles
+N <- vector()
+N[1] <- Num
+Time = 100 
+L = 100 #lag
+specific = Time-L+1#The specific time that we want to compare the distributions
+A = 0.42
+B = 1
+C = 1
+D = 1
+d = 1
+k <- 5
+tau <- 0.5
+X_true <- vector()
+obs <- vector()
+kappa = 0.5
+dt <- ct <- 0
+Tt <- as.matrix(A)
+P0 <- Zt <- Ht <- Gt <- as.matrix(1)
+a0 <- 0
+index <- 1
+
+Obs <- function(){
+  X_true[1] <- rnorm(1)   
+  for(t in 2:Time){  #observations
+    X_true[t] <- rnorm(1) + A*X_true[t-1] 
+  }
+  return(rnorm(Time) + X_true)
+}
+obs <- Obs()
+
+#if we want to repeat the experiment, then start from here
+X <- matrix(NA, Time, Num)
+X_ <- matrix(NA, Time, Num)
+w <- matrix(NA, Time, Num)
+Z = 0
+Z_apf <- vector()
+
+#the mean, variance of the smoothing distribution and normalizing constant
+fkf.obj <- fkf(a0, P0, dt, ct, Tt, Zt, Ht, Gt, yt = t(obs))
+fks.obj <- fks(fkf.obj)
+fkf.obj_Z <- fkf(a0, P0, dt, ct, Tt, Zt, Ht, Gt, yt = t(obs))$logLik
+
+Smoothing <- function(specific_time){
+  fks_mean <- fks.obj$ahatt[,specific_time]
+  fks_var <- fks.obj$Vt[,,specific_time]
+  return(list(fks_mean, fks_var))
+}
+
+##Start our iAPF-quasi algorithm
+n <- L
+
+source('iapfonly_1d_separate_particles.R')
+
+#the first layer of iAPF from t=1 to L
+iAPF1 <- function() {
+ #we only need filtering particles for psi
+  output <- Init(L) 
+  X <- output[[1]] 
+  w <- output[[2]]
+  Z <- output[[3]]
+  psi <- 
+  
+  ####Algorithm####
+  if(L < Time){
+    for(n in seq(2*L,Time,L)){
+      
+      #I didn't include any resampling in this step
+      #Run iAPF with the initial distribution we defined 
+      
+      output <- init_APF(w, X, L)
+      X_apf <- output[[1]]
+      w_apf <- output[[2]]
+      Z_apf <- output[[3]]
+      #X_apf_s <- output[[4]]
+      #w_apf_s <- output[[5]]
+      
+      output2 <- psi_APF(n, X_apf, Z_apf, w, X, L)
+      
+      #smoothing particles
+      X <- output2[[2]]
+      w <- output2[[3]]
+      psi <- 
+    }  
+  }
+  return(psi1 = psi)
+}
+
+algorithm2 <- function() {
+  #we only need filtering particles for psi
+  output <- Init(L/2) 
+  X <- output[[1]] 
+  w <- output[[2]]
+  Z <- output[[3]]
+  psi <- 
+    
+    ####Algorithm####
+  if(L < Time){
+    #start from L/2 to 3L/2 
+    for(n in seq(3*L/2,Time,L)){
+      
+      #I didn't include any resampling in this step
+      #Run iAPF with the initial distribution we defined 
+      
+      output <- init_APF(w, X, L)
+      X_apf <- output[[1]]
+      w_apf <- output[[2]]
+      Z_apf <- output[[3]]
+      #X_apf_s <- output[[4]]
+      #w_apf_s <- output[[5]]
+      
+      output2 <- psi_APF(n, X_apf, Z_apf, w, X, L)
+      
+      #smoothing particles
+      X <- output2[[2]]
+      w <- output2[[3]]
+      psi <- 
+    }  
+  }
+  return(psi2 = psi)
+}
+
+# Create a cluster for parallel processing
+cl <- makeCluster(detectCores())  # Use all available CPU cores
+
+# Parallelize the execution of iAPF1 and algorithm2
+output1 <- clusterCall(cl, iAPF1)
+output2 <- clusterCall(cl, algorithm2)
+
+# Stop the cluster
+stopCluster(cl)
+
+# Use the collected outputs as input for the main algorithm
+final_output <- APF(output1, output2)
+
