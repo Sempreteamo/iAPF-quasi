@@ -10,7 +10,7 @@ Num <- 100 #total number of particles
 N <- vector()
 N[1] <- Num
 Time = 100 
-L = 100 #lag
+L = 50 #lag
 specific = Time-L+1#The specific time that we want to compare the distributions
 A = 0.42
 B = 1
@@ -56,7 +56,7 @@ Smoothing <- function(specific_time){
 }
 
 ##Start our iAPF-quasi algorithm
-n <- L
+n <- L/2
 
 source('iapf_only_controlled_new.R')
 
@@ -77,11 +77,12 @@ iAPF1 <- function() {
       #I didn't include any resampling in this step
       #Run iAPF with the initial distribution we defined 
       
-      output <- init_APF(w, X, L)
+      output <- init_APF(w, X)
       X_apf <- output[[1]]
       w_apf <- output[[2]]
+      Z_apf <- output[[3]]
       
-      output2 <- psi_APF(n, X_apf, Z_apf, w, X, L)
+      output2 <- psi_APF(n, X_apf, Z_apf, w, X)
       
       #smoothing particles
       X <- output2[[1]]
@@ -108,12 +109,12 @@ iAPF2 <- function() {
       #I didn't include any resampling in this step
       #Run iAPF with the initial distribution we defined 
       
-      output <- init_APF(w, X, L)
+      output <- init_APF(w, X)
       X_apf <- output[[1]]
       w_apf <- output[[2]]
       Z_apf <- output[[3]]
       
-      output2 <- psi_APF(n, X_apf, Z_apf, w, X, L)
+      output2 <- psi_APF(n, X_apf, Z_apf, w, X)
       
       #smoothing particles
       X <- output2[[1]]
