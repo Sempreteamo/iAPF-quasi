@@ -1,4 +1,4 @@
-library(parallel)
+library(future)
 library(mvtnorm)
 library(MASS)
 library(FKF)
@@ -62,6 +62,24 @@ source('iapf_only_controlled_new.R')
 
 ####the first layer of iAPF from t=1 to L to obtain psi####
 
+layer1 <- function(start_time, end_time) {
+  time_step <- start_time
+  while (time_step <= end_time) {
+    if (time_step %% L == 0) {
+      cat("iAPF1 generated output at time step", time_step, "\n")
+      psi1 <- iAPF1()
+      Sys.sleep(1)
+      output <- paste("Output from iAPF1 at time", time_step)
+      # Use future to parallelize algorithm3 for processing
+      future({
+        final_output <- smoothing_APF(psi1, 1)
+      })
+    }
+    Sys.sleep(1)  # Simulate the passage of time
+    time_step <- time_step + 1
+  }
+}
+
 iAPF1 <- function() {
 #initialization for time t = 1...L to obtain psi1, w1, X1
   output <- Init() 
@@ -94,6 +112,26 @@ iAPF1 <- function() {
 }
 
 ####the second layer of iAPF from t=1 to L to obtain psi####
+
+layer2 <- function(start_time, end_time) {
+  time_step <- start_time
+  while (time_step <= end_time) {
+    if (time_step %% (L/2) == 0) {
+      cat("Algorithm 2 generated output at time step", time_step, "\n")
+      psi2 <- iAPF2()
+      Sys.sleep(1)
+      output <- paste("Output from Algorithm 2 at time", time_step)
+      # Use future to parallelize algorithm3 for processing
+      future({
+        final_output <- smoothing_APF(psi2, 1)
+      })
+    }
+    Sys.sleep(1)  # Simulate the passage of time
+    time_step <- time_step + 1
+  }
+}
+
+
 iAPF2 <- function() {
   #t = 1, . . . , L/2 to obtain X2, w2 and psi2
   output <- Init() 
@@ -136,5 +174,5 @@ psi2 <- clusterCall(cl, iAPF2)
 stopCluster(cl)
 
 # Use the collected outputs as input for the main algorithm
-final_output <- psi_APF(output1, output2)
+
 
