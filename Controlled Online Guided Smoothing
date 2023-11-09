@@ -6,7 +6,7 @@ library(FKF)
 ##parameters
 start = proc.time()
 set.seed(1)
-Num <- 1000 #total number of particles
+Num <- 100 #total number of particles
 N <- vector()
 N[1] <- Num
 Time = 100 
@@ -58,18 +58,19 @@ Smoothing <- function(specific_time){
 ##Start our iAPF-quasi algorithm
 n <- L
 
-source('iapfonly_1d_separate_particles.R')
+source('iapf_only_controlled_new.R')
 
-#the first layer of iAPF from t=1 to L
+####the first layer of iAPF from t=1 to L to obtain psi####
+
 iAPF1 <- function() {
- #we only need filtering particles for psi
-  output <- Init(L) 
+#initialization for time t = 1...L to obtain psi1, w1, X1
+  output <- Init() 
   X <- output[[1]] 
   w <- output[[2]]
-  Z <- output[[3]]
-  psi <- 
+  psi <- output[[3]]   
   
-  ####Algorithm####
+  #Iteration
+  #obtain 
   if(L < Time){
     for(n in seq(2*L,Time,L)){
       
@@ -79,32 +80,29 @@ iAPF1 <- function() {
       output <- init_APF(w, X, L)
       X_apf <- output[[1]]
       w_apf <- output[[2]]
-      Z_apf <- output[[3]]
-      #X_apf_s <- output[[4]]
-      #w_apf_s <- output[[5]]
       
       output2 <- psi_APF(n, X_apf, Z_apf, w, X, L)
       
       #smoothing particles
-      X <- output2[[2]]
-      w <- output2[[3]]
-      psi <- 
+      X <- output2[[1]]
+      w <- output2[[2]]
+      psi <- output2[[3]]
     }  
   }
   return(psi1 = psi)
 }
 
-algorithm2 <- function() {
-  #we only need filtering particles for psi
-  output <- Init(L/2) 
+####the second layer of iAPF from t=1 to L to obtain psi####
+iAPF2 <- function() {
+  #t = 1, . . . , L/2 to obtain X2, w2 and psi2
+  output <- Init() 
   X <- output[[1]] 
   w <- output[[2]]
-  Z <- output[[3]]
-  psi <- 
+  psi <- output[[3]]   
     
     ####Algorithm####
   if(L < Time){
-    #start from L/2 to 3L/2 
+    #start from L/2 to 3L/2 to obtain psi2
     for(n in seq(3*L/2,Time,L)){
       
       #I didn't include any resampling in this step
@@ -114,15 +112,13 @@ algorithm2 <- function() {
       X_apf <- output[[1]]
       w_apf <- output[[2]]
       Z_apf <- output[[3]]
-      #X_apf_s <- output[[4]]
-      #w_apf_s <- output[[5]]
       
       output2 <- psi_APF(n, X_apf, Z_apf, w, X, L)
       
       #smoothing particles
-      X <- output2[[2]]
-      w <- output2[[3]]
-      psi <- 
+      X <- output2[[1]]
+      w <- output2[[2]]
+      psi <- output2[[3]]
     }  
   }
   return(psi2 = psi)
@@ -131,13 +127,13 @@ algorithm2 <- function() {
 # Create a cluster for parallel processing
 cl <- makeCluster(detectCores())  # Use all available CPU cores
 
-# Parallelize the execution of iAPF1 and algorithm2
-output1 <- clusterCall(cl, iAPF1)
-output2 <- clusterCall(cl, algorithm2)
+# Parallelize the execution of iAPF1 and iAPF2
+psi1 <- clusterCall(cl, iAPF1)
+psi2 <- clusterCall(cl, iAPF2)
 
 # Stop the cluster
 stopCluster(cl)
 
 # Use the collected outputs as input for the main algorithm
-final_output <- APF(output1, output2)
+final_output <- psi_APF(output1, output2)
 
