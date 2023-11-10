@@ -72,7 +72,7 @@ psi_t <- function(x, psi_pa, t, n){
 #I used the weights at time (k-1)L because these are the closest weights, 
 #sample particles X_{kL-L+1} using the particles at time X_(k-1)L
 
-change_mu <- function(w, X){
+change_mu <- function(n, w, X){
   sample <- vector()
   mx <- max(w[n-L,])
   w_ <- exp(w[n-L,]-mx)/sum(exp(w[n-L,] - mx))
@@ -88,7 +88,7 @@ change_mu <- function(w, X){
 #the particles and weights I use are exactly the same as above, and I use
 #f.tilda to generate particles instead of f
 
-change_mupsi <- function(w, X, psi_pa, t, N, l){
+change_mupsi <- function(n, w, X, psi_pa, t, N, l){
   sample <- vector()
   
   #here we need to adjust the weights
@@ -108,9 +108,10 @@ change_mupsi <- function(w, X, psi_pa, t, N, l){
 
 ####iapf
 ####Initialization####
-Init <- function(){
+Init <- function(time_step){
   
-  output <- init_APF(w = 0, X = 0)
+  n <- time_step
+  output <- init_APF(n, w = 0, X = 0)
   X_apf <- output[[1]]
   w_apf <- output[[2]]
   Z_apf <- output[[3]]
@@ -126,7 +127,7 @@ Init <- function(){
 #Below is the iAPF algorithm
 #First we do the initialization
 ####init_APF####
-init_APF <- function(w, X){  #pure filtering
+init_APF <- function(n, w, X){  #pure filtering
   l = 1
   Z_apf[1] = 0
   X_init <- matrix(NA, Time, N[l])
@@ -138,8 +139,8 @@ init_APF <- function(w, X){  #pure filtering
     X_init[1:(n-L+1),] <- rnorm(N[l])  
     w_init[1:(n-L+1),] <- dnorm(X_init[n-L+1,], obs[n-L+1], log = TRUE)
   }else{
-    X_init[1:(n-L+1),] <- change_mu(w, X)[[1]]
-    w_ <- change_mu(w, X)[[2]]
+    X_init[1:(n-L+1),] <- change_mu(n, w, X)[[1]]
+    w_ <- change_mu(n, w, X)[[2]]
     
     for (i in 1:Num){
       w_init[1:(n-L+1), i] <- log(sum(w_*dnorm(X_init[n-L+1,], A*X[n-L,i], B)))
@@ -171,7 +172,7 @@ init_APF <- function(w, X){  #pure filtering
 
 #Within the iAPF scheme, when the number of iterations l >= 2, run APF
 ####APF####
-APF <- function(w, X, psi_pa, l, Z_apf, N){ #purely filtering particles
+APF <- function(n, w, X, psi_pa, l, Z_apf, N){ #purely filtering particles
   #l >= 2
   X_apf <- matrix(NA, Time, N[l])
   w_apf <- matrix(NA, Time, N[l])
@@ -184,8 +185,8 @@ APF <- function(w, X, psi_pa, l, Z_apf, N){ #purely filtering particles
       w_apf[1:(n-L+1),i] <- log(g_aux(obs[n-L+1], X_apf[n-L+1,i],n-L+1, psi_pa, n)) 
     }
   }else{
-    X_apf[1:(n-L+1),1:N[l]] <- change_mupsi(w, X, psi_pa, n-L+1, N, l)[[1]]
-    w_ <- change_mupsi(w, X, psi_pa, n-L+1, N, l)[[2]]
+    X_apf[1:(n-L+1),1:N[l]] <- change_mupsi(n, w, X, psi_pa, n-L+1, N, l)[[1]]
+    w_ <- change_mupsi(n, w, X, psi_pa, n-L+1, N, l)[[2]]
     for (i in 1:N[l]){
       w_apf[1:(n-L+1), i] <- log(sum(w_*dnorm(X_apf[n-L+1,], (psi_pa[n-L+1,2]^2*A*X[n-L,i] +psi_pa[n-L+1,1])/(psi_pa[n-L+1,2]^2+1),
                                               sqrt(psi_pa[n-L+1,2]^2 / (psi_pa[n-L+1,2]^2+1)))))
@@ -273,7 +274,7 @@ psi_APF <- function(n, X_apf, Z_apf, w, X){
       #APF outputs filtering X_apf for the next psi, and smoothing X_apf_s
       #for the final calculation
       
-      output <- APF(w, X, psi_pa, l, Z_apf, N)
+      output <- APF(n, w, X, psi_pa, l, Z_apf, N)
       X_apf <- output[[1]]
       w_apf <- output[[2]]
       Z_apf <- output[[3]]
@@ -304,7 +305,7 @@ psi_APF <- function(n, X_apf, Z_apf, w, X){
 
 ####psi-APF####
 #purely smoothing particles and normalizing constant
-smoothing_APF <- function(psi_pa, l){ 
+smoothing_APF <- function(n, psi_pa, l){ 
   #l >= 2
   X_apf <- matrix(NA, Time, Num)
   w_apf <- matrix(NA, Time, Num)
@@ -313,12 +314,21 @@ smoothing_APF <- function(psi_pa, l){
   
   #when n = kL, we use the new mu.tilda to initialize particles
   
-  X_apf[1,] <- mu_aux(psi_pa, l, N, n-L+1) 
-  for(i in 1:Num){
-    w_apf[1,i] <- log(g_aux(obs[n-L+1], X_apf[n-L+1,i],n-L+1, psi_pa, n)) 
+  if(n == L){
+    X_apf[1:(n-L+1),1:N[l]] <- mu_aux(psi_pa, l, N, n-L+1) 
+    for(i in 1:N[l]){
+      w_apf[1:(n-L+1),i] <- log(g_aux(obs[n-L+1], X_apf[n-L+1,i],n-L+1, psi_pa, n)) 
+    }
+  }else{
+    X_apf[1:(n-L+1),1:N[l]] <- change_mupsi(n, w, X, psi_pa, n-L+1, N, l)[[1]]
+    w_ <- change_mupsi(n, w, X, psi_pa, n-L+1, N, l)[[2]]
+    for (i in 1:N[l]){
+      w_apf[1:(n-L+1), i] <- log(sum(w_*dnorm(X_apf[n-L+1,], (psi_pa[n-L+1,2]^2*A*X[n-L,i] +psi_pa[n-L+1,1])/(psi_pa[n-L+1,2]^2+1),
+                                              sqrt(psi_pa[n-L+1,2]^2 / (psi_pa[n-L+1,2]^2+1)))))
+    }
   }
-  
-  for(t in 2:Time){
+    
+  for(t in (n-L+2):n){
     
     if(ESS(t,w_apf, is.log = TRUE) <= kappa*Num){
       
@@ -345,10 +355,8 @@ smoothing_APF <- function(psi_pa, l){
     
   }
   
-  mx <- max(w_apf[Time, 1:Num])
-  Z_apf[l] <- Z_apf[l] + log(mean(exp(w_apf[Time, 1:Num]-mx))) + mx
+  mx <- max(w_apf[n, 1:Num])
+  Z_apf[l] <- Z_apf[l] + log(mean(exp(w_apf[n, 1:Num]-mx))) + mx
   
   return(list(X_apf, w_apf, Z_apf))
 }
-
-
