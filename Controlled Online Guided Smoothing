@@ -111,34 +111,16 @@ layer1 <- function(start_time, end_time) {
   }
 }
 
-output1 <- layer1(L, Time)
 ####the second layer of iAPF from t=1 to L to obtain psi####
 
-layer2 <- function(start_time, end_time) {
-  time_step <- start_time
-  while (time_step <= end_time) {
-    if (time_step %% (L/2) == 0) {
-      cat("Algorithm 2 generated output at time step", time_step, "\n")
-      psi2 <- iAPF2()
-      Sys.sleep(1)
-      output <- paste("Output from Algorithm 2 at time", time_step)
-      # Use future to parallelize algorithm3 for processing
-      future({
-        final_output <- smoothing_APF(psi2, 1)
-      })
-    }
-    Sys.sleep(1)  # Simulate the passage of time
-    time_step <- time_step + 1
-  }
-}
 
-
-iAPF2 <- function() {
+iAPF2 <- function(time_step) {
   #t = 1, . . . , L/2 to obtain X2, w2 and psi2
-  output <- Init() 
+  
+  output <- Init(time_step) 
   X <- output[[1]] 
   w <- output[[2]]
-  psi <- output[[3]]   
+  psi <- output[[3]]    
     
     ####Algorithm####
   if(L < Time){
@@ -148,12 +130,12 @@ iAPF2 <- function() {
       #I didn't include any resampling in this step
       #Run iAPF with the initial distribution we defined 
       
-      output <- init_APF(w, X)
+      output <- init_APF(time_step, w, X)
       X_apf <- output[[1]]
       w_apf <- output[[2]]
       Z_apf <- output[[3]]
       
-      output2 <- psi_APF(n, X_apf, Z_apf, w, X)
+      output2 <- psi_APF(time_step, X_apf, Z_apf, w, X)
       
       #smoothing particles
       X <- output2[[1]]
@@ -164,16 +146,34 @@ iAPF2 <- function() {
   return(psi2 = psi)
 }
 
-# Create a cluster for parallel processing
-cl <- makeCluster(detectCores())  # Use all available CPU cores
+layer2 <- function(start_time, end_time) {
+  time_step <- start_time
+  while (time_step <= end_time) {
+    if (time_step %% (L/2) == 0) {
+      cat("Algorithm 2 generated output at time step", time_step, "\n")
+      psi2 <- iAPF2(time_step)
+      Sys.sleep(1)
+      # Use future to parallelize algorithm3 for processing
+      future({
+        final_output <- smoothing_APF(time_step, psi2, 1)
+      })
+    }
+    #Sys.sleep(1)  # Simulate the passage of time
+    time_step <- time_step + 1
+  }
+}
 
-# Parallelize the execution of iAPF1 and iAPF2
-psi1 <- clusterCall(cl, iAPF1)
-psi2 <- clusterCall(cl, iAPF2)
+plan(multisession) 
 
-# Stop the cluster
-stopCluster(cl)
+# Start the two algorithms in parallel
+future({
+  layer2(L/2, Time)
+})
+future({
+  layer1(L, Time)
+})
 
-# Use the collected outputs as input for the main algorithm
+# Wait for completion
+future:::wait()
 
 
