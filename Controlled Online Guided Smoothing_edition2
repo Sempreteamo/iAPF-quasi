@@ -5,12 +5,12 @@ library(FKF)
 ##parameters
 start = proc.time()
 set.seed(1)
-Num <- 100 #total number of particles
+Num <- 200 #total number of particles
 N <- vector()
 N[1] <- Num
-Time = 100
+Time = 120
 specific = Time-L+1 #The specific time that we want to compare the distributions
-L = 50 #lag
+L = 40 #lag
 A = 0.42
 B = 1
 C = 1
@@ -30,17 +30,17 @@ psi_final <- matrix(NA, nrow = Time + 3*L/4, ncol = 2)
 
 Obs <- function(){
   X_true[1] <- rnorm(1)   
-  for(t in 2:Time){  #observations
+  for(t in 2:(Time + L/2)){  #observations
     X_true[t] <- rnorm(1) + A*X_true[t-1] 
   }
-  return(rnorm(Time) + X_true)
+  return(rnorm(Time + L/2) + X_true)
 }
 obs <- Obs()
 
 #if we want to repeat the experiment, then start from here
-X <- matrix(NA, Time, Num)
-X_ <- matrix(NA, Time, Num)
-w <- matrix(NA, Time, Num)
+X <- matrix(NA, Time + L/2, Num)
+X_ <- matrix(NA, Time + L/2, Num)
+w <- matrix(NA, Time + L/2, Num)
 Z = 0
 Z_apf <- vector()
 
@@ -100,15 +100,13 @@ iAPF1 <- function(time_step) {
 }
 
 psi_final <- iAPF1(n)
-
-n <- L/2
 ####the second layer of iAPF from t=1 to L to obtain psi####
 
-
-iAPF2 <- function(psi_final, time_step) {
+n <- L/2
+#iAPF2 <- function(psi_final, time_step) {
   #t = 1, . . . , L/2 to obtain X2, w2 and psi2
-  psi_final <- psi_final
-  
+ # psi_final <- psi_final
+  time_step <- n
   L <- L/2
   output <- Init(time_step) 
   X <- output[[1]] 
@@ -120,7 +118,7 @@ iAPF2 <- function(psi_final, time_step) {
   if(L < Time){
     #start from L/2 to 3L/2 to obtain psi2
     count = 0
-    for(time_step in seq(3*L/2,Time,L)){
+    for(time_step in seq(3*L/2,Time+L/2,L)){
       #I didn't include any resampling in this step
       #Run iAPF with the initial distribution we defined 
       
@@ -136,54 +134,50 @@ iAPF2 <- function(psi_final, time_step) {
       w <- output2[[2]]
       psi <- output2[[3]]
       
-      psi_final[(3*L/4+1+count*L):(3*L/4+count*L+ L/2),] <- psi[complete.cases(psi), ][(L/4 + 1):(3*L/4),]
+      if(time_step != Time+L/2){
+        psi_final[(3*L/4+1+count*L):(3*L/4+count*L+ L/2),] <- psi[complete.cases(psi), ][(L/4 + 1):(3*L/4),]
+      }else{
+        psi_final <- rbind(psi_final, psi[complete.cases(psi), ][(L/4 + 1):(L/2),])
+      }
       
       count = count + 1
     }  
   }
-  return(psi2 = psi)
-}
+#  return(psi_final)
+#}
 
-psi_final <- iAPF2(n)
+#psi_final <- iAPF2(psi_final, n)
+
 ####psi-APF####
 #purely smoothing particles and normalizing constant
-smoothing_APF <- function(n, psi_pa, l){ 
+smoothing_APF <- function(psi_pa){ 
   #l >= 2
   X_apf <- matrix(NA, Time, Num)
   w_apf <- matrix(NA, Time, Num)
   
-  Z_apf[l] <- 0
+  Z_apf <- 0
   
   #when n = kL, we use the new mu.tilda to initialize particles
   
-  if(n == L){
-    X_apf[1:(n-L+1),1:N[l]] <- mu_aux(psi_pa, l, N, n-L+1) 
-    for(i in 1:N[l]){
-      w_apf[1:(n-L+1),i] <- log(g_aux(obs[n-L+1], X_apf[n-L+1,i],n-L+1, psi_pa, n)) 
-    }
-  }else{
-    X_apf[1:(n-L+1),1:N[l]] <- change_mupsi(n, w, X, psi_pa, n-L+1, N, l)[[1]]
-    w_ <- change_mupsi(n, w, X, psi_pa, n-L+1, N, l)[[2]]
-    for (i in 1:N[l]){
-      w_apf[1:(n-L+1), i] <- log(sum(w_*dnorm(X_apf[n-L+1,], (psi_pa[n-L+1,2]^2*A*X[n-L,i] +psi_pa[n-L+1,1])/(psi_pa[n-L+1,2]^2+1),
-                                              sqrt(psi_pa[n-L+1,2]^2 / (psi_pa[n-L+1,2]^2+1)))))
-    }
+  X_apf[1,] <- mu_aux(psi_pa, 1, N, 1) 
+  for(i in 1:Num){
+    w_apf[1,i] <- log(g_aux_smoo(obs[1], X_apf[1,i],1, psi_pa, Time)) 
   }
   
-  for(t in (n-L+2):n){
+  for(t in 2:Time){
     
     if(ESS(t,w_apf, is.log = TRUE) <= kappa*Num){
       
       mx <- max(w_apf[t-1,])
       w_ <- exp(w_apf[t-1,1:Num]-mx)/sum(exp(w_apf[t-1, 1:Num] - mx))
-      Z_apf[l] = Z_apf[l] + log(mean(exp(w_apf[t-1,]-mx))) + mx
+      Z_apf = Z_apf + log(mean(exp(w_apf[t-1,]-mx))) + mx
       mix <- sample(1:Num,Num, replace = TRUE, prob = w_)
       X_apf <- X_apf[, mix]
       
       for(i in 1:Num){
         #filtering particles
         X_apf[t,i] <- f_aux(X_apf[t-1, i], psi_pa, t)
-        w_apf[t,i] <- log(g_aux(obs[t], X_apf[t,i], t, psi_pa, n))  
+        w_apf[t,i] <- log(g_aux_smoo(obs[t], X_apf[t,i], t, psi_pa, Time))  
         
       }
     }else{
@@ -191,17 +185,22 @@ smoothing_APF <- function(n, psi_pa, l){
       for(i in 1:Num){
         #filtering particles
         X_apf[t,i] <- f_aux(X_apf[t-1,i], psi_pa, t) 
-        w_apf[t,i] <- w_apf[t-1,i] + log(g_aux(obs[t], X_apf[t,i], t, psi_pa, n))
+        w_apf[t,i] <- w_apf[t-1,i] + log(g_aux_smoo(obs[t], X_apf[t,i], t, psi_pa, Time))
       }
     }
     
   }
   
-  mx <- max(w_apf[n, 1:Num])
-  Z_apf[l] <- Z_apf[l] + log(mean(exp(w_apf[n, 1:Num]-mx))) + mx
+  mx <- max(w_apf[Time, 1:Num])
+  Z_apf <- Z_apf + log(mean(exp(w_apf[Time, 1:Num]-mx))) + mx
   
   return(list(X_apf, w_apf, Z_apf))
 }
+  
+output2 <- smoothing_APF(psi_final)
+X <- output2[[1]]
+w <- output2[[2]]
+Z <- output2[[3]]
 
 mx <- max(w[Time,]) 
 #Z <- Z + log(mean(exp(w[Time,]-mx))) + mx
