@@ -5,11 +5,11 @@ library(FKF)
 ##parameters
 start = proc.time()
 set.seed(1)
-Num <- 200 #total number of particles
+Num <- 1000 #total number of particles
 N <- vector()
 N[1] <- Num
-Time = 120
-specific = Time-L+1 #The specific time that we want to compare the distributions
+Time = 200
+specific = Time #The specific time that we want to compare the distributions
 L = 40 #lag
 A = 0.42
 B = 1
@@ -21,6 +21,7 @@ tau <- 0.5
 X_true <- vector()
 obs <- vector()
 kappa = 0.5
+tau <- 0.5
 dt <- ct <- 0
 Tt <- as.matrix(A)
 P0 <- Zt <- Ht <- Gt <- as.matrix(1)
@@ -47,7 +48,7 @@ Z_apf <- vector()
 #the mean, variance of the smoothing distribution and normalizing constant
 fkf.obj <- fkf(a0, P0, dt, ct, Tt, Zt, Ht, Gt, yt = t(obs))
 fks.obj <- fks(fkf.obj)
-fkf.obj_Z <- fkf(a0, P0, dt, ct, Tt, Zt, Ht, Gt, yt = t(obs))$logLik
+fkf.obj_Z <- fkf(a0, P0, dt, ct, Tt, Zt, Ht, Gt, yt = t(obs[1:Time]))$logLik
 
 Smoothing <- function(specific_time){
   fks_mean <- fks.obj$ahatt[,specific_time]
@@ -59,6 +60,7 @@ Smoothing <- function(specific_time){
 n <- L
 
 source('iapf_only_controlled_new_ed2.R')
+
 
 ####Initialization####
 iAPF1 <- function(time_step) {
