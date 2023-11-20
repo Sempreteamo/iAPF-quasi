@@ -228,12 +228,16 @@ fks_var <- output_s[[2]]
 #the equation of dKS(F, G) below is in the notes
 
 dKS <- function(specific_time) {
+  #the replacement of the weights and particles matrices
+  X_ <- X
+  w_c <- w_
+  
   d <- vector()
   order <- order(X[specific_time,])
-  X[specific_time,] <- sort(X[specific_time,])
-  w_ <- w_[order]
-  cumsum_w <- cumsum(w_)
-  f <- pnorm(X[specific_time,], mean = fks_mean, sd = sqrt(fks_var)) 
+  X_[specific_time,] <- sort(X[specific_time,])
+  w_c <- w_[order]
+  cumsum_w <- cumsum(w_c)
+  f <- pnorm(X_[specific_time,], mean = fks_mean, sd = sqrt(fks_var)) 
   d <- abs(f - cumsum_w)
   return(max(d))
 }
