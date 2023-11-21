@@ -1,16 +1,17 @@
 library(mvtnorm)
 library(MASS)
 library(FKF)
+library(profvis)
 
 ##parameters
 start = proc.time()
 set.seed(1)
-Num <- 1000 #total number of particles
+Num <- 100 #total number of particles
 N <- vector()
 N[1] <- Num
-Time = 200
-specific = Time #The specific time that we want to compare the distributions
-L = 40 #lag
+Time = 100
+specific = 1 #The specific time that we want to compare the distributions
+L = 20 #lag
 A = 0.42
 B = 1
 C = 1
@@ -31,17 +32,17 @@ psi_final <- matrix(NA, nrow = Time + 3*L/4, ncol = 2)
 
 Obs <- function(){
   X_true[1] <- rnorm(1)   
-  for(t in 2:(Time + L/2)){  #observations
+  for(t in 2:(Time )){  #observations
     X_true[t] <- rnorm(1) + A*X_true[t-1] 
   }
-  return(rnorm(Time + L/2) + X_true)
+  return(rnorm(Time ) + X_true)
 }
 obs <- Obs()
 
 #if we want to repeat the experiment, then start from here
-X <- matrix(NA, Time + L/2, Num)
-X_ <- matrix(NA, Time + L/2, Num)
-w <- matrix(NA, Time + L/2, Num)
+X <- matrix(NA, Time , Num)
+X_ <- matrix(NA, Time , Num)
+w <- matrix(NA, Time , Num)
 Z = 0
 Z_apf <- vector()
 
@@ -120,7 +121,7 @@ n <- L/2
   if(L < Time){
     #start from L/2 to 3L/2 to obtain psi2
     count = 0
-    for(time_step in seq(3*L/2,Time+L/2,L)){
+    for(time_step in seq(3*L/2,Time,L)){
       #I didn't include any resampling in this step
       #Run iAPF with the initial distribution we defined 
       
@@ -136,20 +137,34 @@ n <- L/2
       w <- output2[[2]]
       psi <- output2[[3]]
       
-      if(time_step != Time+L/2){
-        psi_final[(3*L/4+1+count*L):(3*L/4+count*L+ L/2),] <- psi[complete.cases(psi), ][(L/4 + 1):(3*L/4),]
-      }else{
-        psi_final <- rbind(psi_final, psi[complete.cases(psi), ][(L/4 + 1):(L/2),])
-      }
+      psi_final[(3*L/4+1+count*L):(3*L/4+count*L+ L/2),] <- psi[complete.cases(psi), ][(L/4 + 1):(3*L/4),]
       
       count = count + 1
     }  
+  }
+  
+  if(time_step != Time){
+    L <- L/2
+    time_step <- Time
+    
+    output <- init_APF(time_step, w, X)
+    X_apf <- output[[1]]
+    w_apf <- output[[2]]
+    Z_apf <- output[[3]]
+    
+    output2 <- psi_APF(time_step, X_apf, Z_apf, w, X)
+    
+    #smoothing particles
+    X <- output2[[1]]
+    w <- output2[[2]]
+    psi <- output2[[3]]
+    psi_final <- rbind(psi_final, psi[complete.cases(psi), ][(L/2 + 1):L,])
   }
 #  return(psi_final)
 #}
 
 #psi_final <- iAPF2(psi_final, n)
-
+L <- L*2
 ####psi-APF####
 #purely smoothing particles and normalizing constant
 smoothing_APF <- function(psi_pa){ 
@@ -205,9 +220,9 @@ w <- output2[[2]]
 Z <- output2[[3]]
 
 mx <- max(w[Time,]) 
-#Z <- Z + log(mean(exp(w[Time,]-mx))) + mx
-mx <- max(w[specific,]) 
-w_ <- exp(w[specific,]-mx)/sum(exp(w[specific,] - mx))
+#mx <- max(w[specific,]) 
+#w_ <- exp(w[specific,]-mx)/sum(exp(w[specific,] - mx))
+w_ <- exp(w[Time,]-mx)/sum(exp(w[Time,] - mx))
 
 #Calculation of the mean and variance of empirical distribution
 #Here 'weighted_mean' is the empirical mean, 'variance' is the empirical variance
@@ -227,7 +242,7 @@ fks_var <- output_s[[2]]
 #empirical distribution function
 #the equation of dKS(F, G) below is in the notes
 
-dKS <- function(specific_time) {
+dKS <- function(X, w_, specific_time) {
   #the replacement of the weights and particles matrices
   X_ <- X
   w_c <- w_
@@ -242,7 +257,7 @@ dKS <- function(specific_time) {
   return(max(d))
 }
 
-KS_distance <- dKS(specific)
+KS_distance <- dKS(X, w_, specific)
 normalizing_c <- exp(Z-fkf.obj_Z)
 
 #Note that the normalizing constant here is just the values calculated within each 
