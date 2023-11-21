@@ -6,12 +6,13 @@ library(profvis)
 ##parameters
 start = proc.time()
 set.seed(1)
-Num <- 100 #total number of particles
+Num <- 1000 #total number of particles
 N <- vector()
 N[1] <- Num
 Time = 100
-specific = 1 #The specific time that we want to compare the distributions
-L = 20 #lag
+specific = Time
+specific1 = 1#The specific time that we want to compare the distributions
+L = 8 #lag
 A = 0.42
 B = 1
 C = 1
@@ -259,6 +260,7 @@ dKS <- function(X, w_, specific_time) {
 
 KS_distance <- dKS(X, w_, specific)
 normalizing_c <- exp(Z-fkf.obj_Z)
+KS_distance_start <- dKS(X, w_, specific1)
 
 #Note that the normalizing constant here is just the values calculated within each 
 #block from n-L+1 to n.It's not the real normalizing constant Z. 
