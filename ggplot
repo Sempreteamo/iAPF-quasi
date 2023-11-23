@@ -1,0 +1,110 @@
+data.frame(x=final)
+install.packages('knitr')
+library(knitr)
+library(base)
+library(ggplot2)
+hatZ <- hat('Z')
+lcomb=data.frame(rbind(data.frame(L_5), data.frame(L_20),
+                       data.frame(L_50), data.frame(L_100),
+                       data.frame(final_bpf)),
+                 L=rep(1:10,each=50),
+                 Algorithm=factor(rep(rep(c("iapf_fixed","BPF"),each=50),5)))
+colnames(lcomb)[1]="Mahalanobis_Distance"
+library(ggplot2)
+p=ggplot(data=lcomb,aes(x=L,y=Mahalanobis_Distance,col=Algorithm))+geom_boxplot(aes(group=L))
+c=p+ theme_set(theme_bw())+
+  theme(#panel.grid.major=element_line(colour=NA),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    legend.position='NULL',
+    plot.title = element_text(hjust = 0.5))+
+  stat_summary(fun=mean, geom='point', shape=3,color='red')+
+  scale_x_continuous(labels = c(5,20,40,60,85),breaks = c(1.5,3.5,5.5,7.5,9.5))+
+  geom_vline(xintercept = c(2.5,4.5,6.5,8.5),size=0.05,color='gray')+
+  xlab('Dimension')+
+  scale_color_manual(values=c("iapf_fixed"="#1f77b4","BPF"="#ff7f0e"))+
+  ggtitle('Time T-L+L/4')
+#+ ylim(0,0.5)
+pdf("compare.pdf",height=6.5,width=8)
+plot_grid(a,b,c,nrow = 3)
+dev.off()
+write.csv(lcomb,file='combine.csv')
+
+L_5 <- data.frame(Group = '5', Values = L_5)
+L_25 <- data.frame(Group = '25', Values = L_25)
+L_20 <- data.frame(Group = '20', Values = L_20)
+L_50 <- data.frame(Group = '50',Values = L_50)
+L_100 <- data.frame(Group = '100',Values = L_100)
+bpf <- data.frame(Group = 'bpf',Values = final_bpf)
+combined <- rbind(L_5,L_25,L_20,L_50,L_100,bpf)
+combined$Group=gsub("L=","",combined$Group)
+combined$Group=factor(combined$Group,levels=c('5','25','20','50','100','bpf'))
+ggplot(combined, aes(x = Group, y = Values))+
+  geom_boxplot()+
+  stat_summary(fun=mean, geom='point', shape=3,color='red')+
+  labs(x = 'L', 
+       y = 'Kolmogorov-Smirnov Distance')+
+  scale_color_manual(values=c("L_5"="#ff7f0e",'L_10'='blue', "L=20"="#1f77b4",'L_50'='blue','L_100'='green','bpf'='yellow'))
+
+
+
+data.frame(x=read.table('BPF.csv',sep=',',header=T)[,-1]))
+
+final <- as.data.frame(final)
+final <- read.csv('L=4.csv',sep='')
+boxplot(final, ylab='estimates', xlab='N=500, T=10, d=5')
+
+avg <- as.data.frame(avg)
+Avg <- read.csv('avg.csv', sep=',')
+L_2 <- read.csv('L=2.csv',sep='')
+L_5 <- read.csv('L=5.csv',sep='')
+L_9 <- read.csv('L=9.csv',sep='')
+plot(x=c(1:100),y=apply(Avg[,2:101],2,mean),type='l',col='red',xlab='time',ylab='number of unique particles')
+lines(x=c(1:140),y=apply(L_5,2,mean),type='l',col='blue')
+lines(x=c(1:140),y=apply(avg,2,mean),type='l',col='green')
+lines(x=c(1:140),y=apply(L_9,2,mean),type='l',col='yellow')
+legend("topleft", legend=c('bpf',"L=2", "L=5",'L=9'), col=c('green','red', "blue",'yellow'), lty=1,cex=0.6)
+
+L_candidate=7
+filename=character()
+for(i in 1:50){
+  filename[i]=paste0('L=',L_candidate[((i-1)%/%50)+1],'_',((i-1)%%50+1),'.csv')
+}
+print(filename)
+for(i in 1:1){
+  for(j in 1:50){
+    if(j==1){
+      comb=read.csv(filename[(i-1)*50+j],sep='')
+    }else{
+      comb=rbind(comb,read.table(filename[(i-1)*50+j],sep=''))
+    }
+    if(j==50) write.table(comb,file=paste0('L=',L_candidate[i],'.csv'))
+  }
+}
+
+sigma <- 5
+n <- 100
+log_ll <- function(mu){
+  sum(dnorm(x, mean=mu, sd=sigma, log=TRUE))
+}
+log_ll (6)
+Vectorize(log_ll)(seq(0,15,0.1))
+
+data <- data.frame(
+  Sequence = rep(c("L10", "L50", "L10_s", "L50_s"), each = length(L50)),
+  Value = c(L10, L50, L10_s, L50_s)
+)
+
+# Specify the desired order of the "Sequence" factor
+sequence_order <- c("L50_s", "L50", "L10_s", "L10")
+data$Sequence <- factor(data$Sequence, levels = sequence_order)
+
+# Create a boxplot comparing all eight sequences
+boxplot_plot <- ggplot(data, aes(x = Sequence, y = Value, fill = Sequence)) +
+  geom_boxplot() +
+  labs(title = "Comparison of outputs for N250T250", x = "Sequence", y = "Value") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))  # Rotate x-axis labels for readability
+
+# Display the boxplot
+print(boxplot_plot)
