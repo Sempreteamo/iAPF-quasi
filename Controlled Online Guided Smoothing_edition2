@@ -9,9 +9,9 @@ set.seed(1)
 Num <- 1000 #total number of particles
 N <- vector()
 N[1] <- Num
-Time = 100
-specific = Time
-specific1 = 1#The specific time that we want to compare the distributions
+Time = 200
+#specific = Time
+#specific1 = 1#The specific time that we want to compare the distributions
 L = 8 #lag
 A = 0.42
 B = 1
@@ -29,7 +29,8 @@ Tt <- as.matrix(A)
 P0 <- Zt <- Ht <- Gt <- as.matrix(1)
 a0 <- 0
 index <- 1
-psi_final <- matrix(NA, nrow = Time + 3*L/4, ncol = 2)
+psi_final <- matrix(NA, nrow = Time, ncol = 2)
+KS_distance <- vector()
 
 Obs <- function(){
   X_true[1] <- rnorm(1)   
@@ -108,45 +109,23 @@ psi_final <- iAPF1(n)
 
 n <- L/2
 #iAPF2 <- function(psi_final, time_step) {
-  #t = 1, . . . , L/2 to obtain X2, w2 and psi2
- # psi_final <- psi_final
-  time_step <- n
-  L <- L/2
-  output <- Init(time_step) 
-  X <- output[[1]] 
-  w <- output[[2]]
-  psi <- output[[3]]    
-  
-  L <- 2*L
-  ####Algorithm####
-  if(L < Time){
-    #start from L/2 to 3L/2 to obtain psi2
-    count = 0
-    for(time_step in seq(3*L/2,Time,L)){
-      #I didn't include any resampling in this step
-      #Run iAPF with the initial distribution we defined 
-      
-      output <- init_APF(time_step, w, X)
-      X_apf <- output[[1]]
-      w_apf <- output[[2]]
-      Z_apf <- output[[3]]
-      
-      output2 <- psi_APF(time_step, X_apf, Z_apf, w, X)
-      
-      #smoothing particles
-      X <- output2[[1]]
-      w <- output2[[2]]
-      psi <- output2[[3]]
-      
-      psi_final[(3*L/4+1+count*L):(3*L/4+count*L+ L/2),] <- psi[complete.cases(psi), ][(L/4 + 1):(3*L/4),]
-      
-      count = count + 1
-    }  
-  }
-  
-  if(time_step != Time){
-    L <- L/2
-    time_step <- Time
+#t = 1, . . . , L/2 to obtain X2, w2 and psi2
+# psi_final <- psi_final
+time_step <- n
+L <- L/2
+output <- Init(time_step) 
+X <- output[[1]] 
+w <- output[[2]]
+psi <- output[[3]]    
+
+L <- 2*L
+####Algorithm####
+if(L < Time){
+  #start from L/2 to 3L/2 to obtain psi2
+  count = 0
+  for(time_step in seq(3*L/2,Time,L)){
+    #I didn't include any resampling in this step
+    #Run iAPF with the initial distribution we defined 
     
     output <- init_APF(time_step, w, X)
     X_apf <- output[[1]]
@@ -159,8 +138,30 @@ n <- L/2
     X <- output2[[1]]
     w <- output2[[2]]
     psi <- output2[[3]]
-    psi_final <- rbind(psi_final, psi[complete.cases(psi), ][(L/2 + 1):L,])
-  }
+    
+    psi_final[(3*L/4+1+count*L):(3*L/4+count*L+ L/2),] <- psi[complete.cases(psi), ][(L/4 + 1):(3*L/4),]
+    
+    count = count + 1
+  }  
+}
+
+if(time_step != Time){
+  L <- L/2
+  time_step <- Time
+  
+  output <- init_APF(time_step, w, X)
+  X_apf <- output[[1]]
+  w_apf <- output[[2]]
+  Z_apf <- output[[3]]
+  
+  output2 <- psi_APF(time_step, X_apf, Z_apf, w, X)
+  
+  #smoothing particles
+  X <- output2[[1]]
+  w <- output2[[2]]
+  psi <- output2[[3]]
+  psi_final <- rbind(psi_final, psi[complete.cases(psi), ][(L/2 + 1):L,])
+}
 #  return(psi_final)
 #}
 
@@ -174,6 +175,7 @@ smoothing_APF <- function(psi_pa){
   w_apf <- matrix(NA, Time, Num)
   
   Z_apf <- 0
+  re = 0
   
   #when n = kL, we use the new mu.tilda to initialize particles
   
@@ -185,7 +187,7 @@ smoothing_APF <- function(psi_pa){
   for(t in 2:Time){
     
     if(ESS(t,w_apf, is.log = TRUE) <= kappa*Num){
-      
+      re = re + 1
       mx <- max(w_apf[t-1,])
       w_ <- exp(w_apf[t-1,1:Num]-mx)/sum(exp(w_apf[t-1, 1:Num] - mx))
       Z_apf = Z_apf + log(mean(exp(w_apf[t-1,]-mx))) + mx
@@ -212,13 +214,14 @@ smoothing_APF <- function(psi_pa){
   mx <- max(w_apf[Time, 1:Num])
   Z_apf <- Z_apf + log(mean(exp(w_apf[Time, 1:Num]-mx))) + mx
   
-  return(list(X_apf, w_apf, Z_apf))
+  return(list(X_apf, w_apf, Z_apf, re))
 }
-  
+
 output2 <- smoothing_APF(psi_final)
 X <- output2[[1]]
 w <- output2[[2]]
 Z <- output2[[3]]
+re <- output2[[4]]
 
 mx <- max(w[Time,]) 
 #mx <- max(w[specific,]) 
@@ -233,17 +236,18 @@ Empirical <- function(specific_time){
   variance <- s_mean - weighted_mean^2
   return(list(weighted_mean, variance))
 }
-output_e <- Empirical(specific)
-output_s <- Smoothing(specific)
-weighted_mean <- output_e[[1]]
-variance <- output_e[[2]]
-fks_mean <- output_s[[1]]
-fks_var <- output_s[[2]]
 
 #empirical distribution function
 #the equation of dKS(F, G) below is in the notes
 
 dKS <- function(X, w_, specific_time) {
+  output_e <- Empirical(specific_time)
+  output_s <- Smoothing(specific_time)
+  weighted_mean <- output_e[[1]]
+  variance <- output_e[[2]]
+  fks_mean <- output_s[[1]]
+  fks_var <- output_s[[2]]
+  
   #the replacement of the weights and particles matrices
   X_ <- X
   w_c <- w_
@@ -262,8 +266,8 @@ KS_distance <- dKS(X, w_, specific)
 normalizing_c <- exp(Z-fkf.obj_Z)
 KS_distance_start <- dKS(X, w_, specific1)
 
-#Note that the normalizing constant here is just the values calculated within each 
-#block from n-L+1 to n.It's not the real normalizing constant Z. 
-#It should be adjusted to get the value. 
+for(specific in 1:Time){
+  KS_distance[specific] <- dKS(X, w_, specific)
+}
 
 proc.time() - start
