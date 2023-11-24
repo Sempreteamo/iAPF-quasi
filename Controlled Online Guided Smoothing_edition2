@@ -108,7 +108,7 @@ psi_final <- iAPF1(n)
 ####the second layer of iAPF from t=1 to L to obtain psi####
 
 n <- L/2
-#iAPF2 <- function(psi_final, time_step) {
+#iAPF2 <- function(psi_final, time_step, L1, L2, Time) {
 #t = 1, . . . , L/2 to obtain X2, w2 and psi2
 # psi_final <- psi_final
 time_step <- n
@@ -169,7 +169,7 @@ if(time_step != Time){
 L <- L*2
 ####psi-APF####
 #purely smoothing particles and normalizing constant
-smoothing_APF <- function(psi_pa){ 
+smoothing_APF <- function(psi_pa, N, Time){ 
   #l >= 2
   X_apf <- matrix(NA, Time, Num)
   w_apf <- matrix(NA, Time, Num)
@@ -217,7 +217,7 @@ smoothing_APF <- function(psi_pa){
   return(list(X_apf, w_apf, Z_apf, re))
 }
 
-output2 <- smoothing_APF(psi_final)
+output2 <- smoothing_APF(psi_final, N, Time)
 X <- output2[[1]]
 w <- output2[[2]]
 Z <- output2[[3]]
@@ -230,21 +230,21 @@ w_ <- exp(w[Time,]-mx)/sum(exp(w[Time,] - mx))
 
 #Calculation of the mean and variance of empirical distribution
 #Here 'weighted_mean' is the empirical mean, 'variance' is the empirical variance
-Empirical <- function(specific_time){
+Empirical <- function(X, w_, specific_time){
   weighted_mean <- sum(w_*X[specific_time,])
   s_mean <- sum(w_*X[specific_time,]^2)
   variance <- s_mean - weighted_mean^2
   return(list(weighted_mean, variance))
 }
 
+output_e <- Empirical(X, w_, specific_time)
+weighted_mean <- output_e[[1]]
+variance <- output_e[[2]]
 #empirical distribution function
 #the equation of dKS(F, G) below is in the notes
 
 dKS <- function(X, w_, specific_time) {
-  output_e <- Empirical(specific_time)
   output_s <- Smoothing(specific_time)
-  weighted_mean <- output_e[[1]]
-  variance <- output_e[[2]]
   fks_mean <- output_s[[1]]
   fks_var <- output_s[[2]]
   
@@ -262,9 +262,9 @@ dKS <- function(X, w_, specific_time) {
   return(max(d))
 }
 
-KS_distance <- dKS(X, w_, specific)
+#KS_distance <- dKS(X, w_, specific)
 normalizing_c <- exp(Z-fkf.obj_Z)
-KS_distance_start <- dKS(X, w_, specific1)
+#KS_distance_start <- dKS(X, w_, specific1)
 
 for(specific in 1:Time){
   KS_distance[specific] <- dKS(X, w_, specific)
