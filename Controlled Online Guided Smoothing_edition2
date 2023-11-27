@@ -6,13 +6,13 @@ library(profvis)
 ##parameters
 start = proc.time()
 set.seed(1)
-Num <- 1000 #total number of particles
+Num <- 200 #total number of particles
 N <- vector()
 N[1] <- Num
 Time = 200
 #specific = Time
 #specific1 = 1#The specific time that we want to compare the distributions
-L = 8 #lag
+Lag = 8 #lag
 A = 0.42
 B = 1
 C = 1
@@ -60,15 +60,15 @@ Smoothing <- function(specific_time){
 }
 
 ##Start our iAPF-quasi algorithm
-n <- L
 
 source('iapf_only_controlled_new_ed2.R')
 
 
 ####Initialization####
-iAPF1 <- function(time_step) {
+iAPF1 <- function(time_step, L) {
   #initialization for time t = 1...L to obtain psi1, w1, X1
-  output <- Init(time_step) 
+  L <- L
+  output <- Init(time_step, L) 
   X <- output[[1]] 
   w <- output[[2]]
   psi <- output[[3]]
@@ -84,12 +84,12 @@ iAPF1 <- function(time_step) {
       #I didn't include any resampling in this step
       #Run iAPF with the initial distribution we defined 
       
-      output <- init_APF(time_step, w, X)
+      output <- init_APF(time_step, w, X, L)
       X_apf <- output[[1]]
       w_apf <- output[[2]]
       Z_apf <- output[[3]]
       
-      output2 <- psi_APF(time_step, X_apf, Z_apf, w, X)
+      output2 <- psi_APF(time_step, X_apf, Z_apf, w, X, L)
       
       #smoothing particles
       X <- output2[[1]]
@@ -104,21 +104,20 @@ iAPF1 <- function(time_step) {
   return(psi_final)
 }
 
-psi_final <- iAPF1(n)
+psi_final <- iAPF1(Lag, Lag)
 ####the second layer of iAPF from t=1 to L to obtain psi####
 
-n <- L/2
-#iAPF2 <- function(psi_final, time_step, L1, L2, Time) {
+iAPF2 <- function(psi_final, time_step, L1, L) {
 #t = 1, . . . , L/2 to obtain X2, w2 and psi2
-# psi_final <- psi_final
-time_step <- n
-L <- L/2
-output <- Init(time_step) 
+psi_final <- psi_final
+L1 <- L1
+L <- L
+
+output <- Init(time_step, L1) 
 X <- output[[1]] 
 w <- output[[2]]
 psi <- output[[3]]    
 
-L <- 2*L
 ####Algorithm####
 if(L < Time){
   #start from L/2 to 3L/2 to obtain psi2
@@ -127,12 +126,12 @@ if(L < Time){
     #I didn't include any resampling in this step
     #Run iAPF with the initial distribution we defined 
     
-    output <- init_APF(time_step, w, X)
+    output <- init_APF(time_step, w, X, L)
     X_apf <- output[[1]]
     w_apf <- output[[2]]
     Z_apf <- output[[3]]
     
-    output2 <- psi_APF(time_step, X_apf, Z_apf, w, X)
+    output2 <- psi_APF(time_step, X_apf, Z_apf, w, X, L)
     
     #smoothing particles
     X <- output2[[1]]
@@ -146,27 +145,26 @@ if(L < Time){
 }
 
 if(time_step != Time){
-  L <- L/2
   time_step <- Time
   
-  output <- init_APF(time_step, w, X)
+  output <- init_APF(time_step, w, X, L1)
   X_apf <- output[[1]]
   w_apf <- output[[2]]
   Z_apf <- output[[3]]
   
-  output2 <- psi_APF(time_step, X_apf, Z_apf, w, X)
+  output2 <- psi_APF(time_step, X_apf, Z_apf, w, X, L1)
   
   #smoothing particles
   X <- output2[[1]]
   w <- output2[[2]]
   psi <- output2[[3]]
-  psi_final <- rbind(psi_final, psi[complete.cases(psi), ][(L/2 + 1):L,])
+  psi_final <- rbind(psi_final, psi[complete.cases(psi), ][(L1/2 + 1):L1,])
 }
-#  return(psi_final)
-#}
+  return(psi_final)
+}
 
-#psi_final <- iAPF2(psi_final, n)
-L <- L*2
+psi_final <- iAPF2(psi_final, Lag/2, Lag/2, Lag)
+
 ####psi-APF####
 #purely smoothing particles and normalizing constant
 smoothing_APF <- function(psi_pa, N, Time){ 
@@ -237,9 +235,9 @@ Empirical <- function(X, w_, specific_time){
   return(list(weighted_mean, variance))
 }
 
-output_e <- Empirical(X, w_, specific_time)
-weighted_mean <- output_e[[1]]
-variance <- output_e[[2]]
+#output_e <- Empirical(X, w_, specific)
+#weighted_mean <- output_e[[1]]
+#variance <- output_e[[2]]
 #empirical distribution function
 #the equation of dKS(F, G) below is in the notes
 
