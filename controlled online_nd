@@ -2,6 +2,7 @@ library(mvtnorm)
 library(MASS)
 library(FKF)
 library(profvis)
+library(mvnfast)
 
 ##parameters
 start = proc.time()
@@ -60,7 +61,6 @@ Smoothing <- function(specific_time){
 }
 
 ##Start our iAPF-quasi algorithm
-n <- L
 
 source('iapf_only_controlled_new_ed2_nd.R')
 
