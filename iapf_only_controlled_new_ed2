@@ -96,37 +96,42 @@ psi_t <- function(x, psi_pa, t, n){
 #sample particles X_{kL-L+1} using the particles at time X_(k-1)L
 
 change_mu <- function(n, w, X, L){
-  sample <- matrix(0,Num,d)
+  sam <- matrix(0,Num,d)
   mx <- max(w[n-L,])
   w_ <- exp(w[n-L,]-mx)/sum(exp(w[n-L,] - mx))
   s <- sample(1:Num, size = Num, replace = TRUE, prob = w_) 
   mus <- X[n-L,,]
   for(i in 1:Num){
-    sample[i,] <- rnorm(d) + as.vector(A%*%mus[s[i],])
+    sam[i,] <- rnorm(d) + as.vector(A%*%mus[s[i],])
   }
-  return(list(sample, w_))
+  return(list(sam, w_))
 }
 
 #the initial distribution mu.tilda at time kL
 #the particles and weights I use are exactly the same as above, and I use
 #f.tilda to generate particles instead of f
 change_mupsi <- function(n, w, X, psi_pa, t, N, l, L){
-  sample <- matrix(0,Num,d)
+  sam <- matrix(0,Num,d)
+  w_adj <- vector()
   
   #here we need to adjust the weights 
-  #????
-  w_adj <- w[n-L,]*exp((psi_pa[t,2]^2*A*X[n-L,] +psi_pa[t,1])^2/(2*(psi_pa[t,2]^2+1)*psi_pa[t,2]^2) -
-                         (psi_pa[t,2]^2*(A*X[n-L,])^2 + psi_pa[t,1]^2)/(2*psi_pa[t,2]^2))
   
+  for(i in 1:Num){
+  w_adj[i] <- w[n-L,i]*exp(1/2*(t(A%*%X[n-L,i,]) + t(psi_pa[t,1:d])%*%
+                   diag(psi_pa[t, (d+1):(d+d)]^(-1), nrow=d,ncol=d))%*%diag((psi_pa[t, (d+1):(d+d)]^(-1) + 1)^(-1), nrow=d,ncol=d)%*%
+                   (A%*%X[n-L,i,] + diag(psi_pa[t, (d+1):(d+d)]^(-1), nrow=d,ncol=d)%*%psi_pa[t,1:d]) - 1/2*(t(A%*%X[n-L,i,])%*%A%*%X[n-L,i,] +
+                    t(psi_pa[t,1:d])%*%diag(psi_pa[t, (d+1):(d+d)]^(-1), nrow=d,ncol=d)%*%psi_pa[t,1:d]))
+  }
+
   mx <- max(w_adj)
   w_ <- exp(w_adj-mx)/sum(exp(w_adj - mx))
   s <- sample(1:Num, size = Num, replace = TRUE, prob = w_) 
   mus <- X[n-L,,]
   for(i in 1:N[l]){
-    sample[i,] <- f_aux(mus[s[i],], psi_pa, t)
+    sam[i,] <- as.vector(f_aux(mus[s[i],], psi_pa, t))
     
   }
-  return(list(sample, w_))
+  return(list(sam, w_))
 }
 
 ####iapf
@@ -165,8 +170,9 @@ init_APF <- function(n, w, X, L){  #pure filtering
       w_init[1:(n-L+1),i] <- log(g(obs[n-L+1,], X_init[n-L+1,i,]))  
     }
   }else{
-    X_init[1:(n-L+1),,] <- change_mu(n, w, X, L)[[1]]
-    w_ <- change_mu(n, w, X)[[2]]
+    output <- change_mu(n, w, X, L)
+    X_init[1:(n-L+1),,] <- output[[1]]
+    w_ <- output[[2]]
     
     for (i in 1:Num){
       w_init[1:(n-L+1), i] <- log(sum(w_*dmvn(X_init[n-L+1,,], A%*%X[n-L,i,], B)))
