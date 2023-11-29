@@ -34,6 +34,7 @@ P0 <- Zt <- Ht <- Gt <- diag(1, d, d)
 a0 <- rep(0, d)
 index <- 1
 psi_final <- matrix(NA, nrow = Time, ncol = 2*d)
+MH_distance <- vector()
 
 Obs <- function(){
   X_true[1,] <- rnorm(d)     
@@ -52,7 +53,7 @@ Z_apf <- vector()
 
 fkf.obj <- fkf(a0, P0, dt, ct, Tt, Zt, Ht, Gt, yt = t(obs))
 fks.obj <- fks(fkf.obj)
-fkf.obj_Z <- fkf(a0, P0, dt, ct, Tt, Zt, Ht, Gt, yt = t(obs[1:Time]))$logLik
+fkf.obj_Z <- fkf(a0, P0, dt, ct, Tt, Zt, Ht, Gt, yt = t(obs))$logLik #???
 
 Smoothing <- function(specific_time){
   fks_mean <- fks.obj$ahatt[,specific_time]
@@ -108,7 +109,7 @@ psi_final <- iAPF1(Lag, Lag)
 ####the second layer of iAPF from t=1 to L to obtain psi####
 
 
-iAPF2 <- function(psi_final, time_step) {
+iAPF2 <- function(psi_final, time_step, L1, L) {
 #t = 1, . . . , L/2 to obtain X2, w2 and psi2
   psi_final <- psi_final
   L1 <- L1
@@ -119,7 +120,6 @@ X <- output[[1]]
 w <- output[[2]]
 psi <- output[[3]]    
 
-L <- 2*L
 ####Algorithm####
 if(L < Time){
   #start from L/2 to 3L/2 to obtain psi2
@@ -171,8 +171,8 @@ psi_final <- iAPF2(psi_final, Lag/2, Lag/2, Lag)
 #purely smoothing particles and normalizing constant
 smoothing_APF <- function(psi_pa, N, Time){ 
   #l >= 2
-  X_apf <- array(NA, dim = c(Time, N[l], d))
-  w_apf <- matrix(NA, Time, N[l])
+  X_apf <- array(NA, dim = c(Time, N[1], d))
+  w_apf <- matrix(NA, Time, N[1])
   Z_apf <- 0
   
   re = 0
@@ -181,7 +181,7 @@ smoothing_APF <- function(psi_pa, N, Time){
   
   X_apf[1,,] <- mu_aux(psi_pa, 1, N, 1)
   for(i in 1:Num){
-    w_apf[1,i] <- log(g_aux_smoo(obs[1], X_apf[1,i],1, psi_pa, Time)) 
+    w_apf[1,i] <- log(g_aux_smoo(obs[1], X_apf[1,i,],1, psi_pa, Time)) 
   }
   
   for(t in 2:Time){
@@ -190,9 +190,9 @@ smoothing_APF <- function(psi_pa, N, Time){
       re = re + 1
       mx <- max(w_apf[t-1,])
       w_ <- exp(w_apf[t-1,1:Num]-mx)/sum(exp(w_apf[t-1, 1:Num] - mx))
-      Z_apf[l] = Z_apf[l] + log(mean(exp(w_apf[t-1,]-mx))) + mx
+      Z_apf = Z_apf + log(mean(exp(w_apf[t-1,]-mx))) + mx
       mix <- sample(1:Num,Num, replace = TRUE, prob = w_)
-      X_apf <- X_apf[, mix]
+      X_apf <- X_apf[, mix,]
       
       for(i in 1:Num){
         #filtering particles
@@ -223,26 +223,14 @@ w <- output2[[2]]
 Z <- output2[[3]]
 
 mx <- max(w[Time,]) 
-#mx <- max(w[specific,]) 
-#w_ <- exp(w[specific,]-mx)/sum(exp(w[specific,] - mx))
 w_ <- exp(w[Time,]-mx)/sum(exp(w[Time,] - mx))
-
-#Calculation of the mean and variance of empirical distribution
-#Here 'weighted_mean' is the empirical mean, 'variance' is the empirical variance
-Empirical <- function(specific_time, w_, X){
-  weighted_mean <- sum(w_*X[specific_time,])
-  s_mean <- sum(w_*X[specific_time,]^2)
-  variance <- s_mean - weighted_mean^2
-  return(list(weighted_mean, variance))
-}
 
 #Mahalanobis distance
 for(specific in 1:Time){
+  weighted_mean <- colSums(w_*X[specific,,])
   output_s <- Smoothing(specific)
-  output_e <- Empirical(specific, w_, X)
   fks_mean <- output_s[[1]]
   fks_cov <- output_s[[2]]
-  weighted_mean <- output_e[[1]]
   MH_distance[specific] <- mahalanobis(weighted_mean, fks_mean, fks_cov)/d
 }
 
