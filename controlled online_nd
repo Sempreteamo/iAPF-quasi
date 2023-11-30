@@ -15,7 +15,7 @@ Time = 200
 #specific1 = 1#The specific time that we want to compare the distributions
 Lag = 8 #lag
 alpha = 0.42
-d = 2
+d = 3
 k <- 5
 tau <- 0.5
 kappa = 0.5
