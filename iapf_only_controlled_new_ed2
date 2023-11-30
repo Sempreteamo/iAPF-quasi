@@ -18,7 +18,7 @@ Num_apf <- function(Z, l, k){
 #trans prob
 #N(; Ax, B)
 f <- function(x){
-  return (rnorm(d) + as.vector(A%*%x))   #trans prob
+  return (rnorm(d) + A%*%x)   #trans prob
 }
 
 #obs prob  
@@ -29,8 +29,8 @@ g <- function(y, x){
 
 #twisted mu
 mu_aux <- function(psi_pa, l, N, t){  
-  return(rmvn(N[l], as.vector(diag(((psi_pa[t, (d+1):(d+d)])^(-1)+1)^(-1), nrow=d,ncol=d)%*%
-                                (diag((psi_pa[t, (d+1):(d+d)])^(-1), nrow=d,ncol=d)%*%psi_pa[t,1:d])), 
+  return(rmvn(N[l], diag(((psi_pa[t, (d+1):(d+d)])^(-1)+1)^(-1), nrow=d,ncol=d)%*%
+                                (diag((psi_pa[t, (d+1):(d+d)])^(-1), nrow=d,ncol=d)%*%psi_pa[t,1:d]), 
               diag(((psi_pa[t, (d+1):(d+d)])^(-1)+1)^(-1), nrow=d,ncol=d)))
 }
 
@@ -59,8 +59,8 @@ g_aux_smoo <- function(y, x, t, psi_pa, n){
 
 #twisted f
 f_aux <- function(x, psi_pa, t){
-  return(rmvn(1, as.vector(diag(((psi_pa[t, (d+1):(d+d)])^(-1)+1)^(-1), nrow=d,ncol=d)%*%
-                             (A%*%x + diag(psi_pa[t, (d+1):(d+d)]^(-1), nrow=d,ncol=d)%*%psi_pa[t,1:d])), 
+  return(rmvn(1, diag(((psi_pa[t, (d+1):(d+d)])^(-1)+1)^(-1), nrow=d,ncol=d)%*%
+                             (A%*%x + diag(psi_pa[t, (d+1):(d+d)]^(-1), nrow=d,ncol=d)%*%psi_pa[t,1:d]), 
               diag(((psi_pa[t, (d+1):(d+d)])^(-1)+1)^(-1), nrow=d,ncol=d)))  #f_2:T 
 }
 
@@ -70,8 +70,8 @@ psi_tilda <- function(x, psi_pa, t, n){  #from 0 to T. 0,T = 1
     psi_tilda <- 1
   }else{   #psi_pa_t = psi_t
     psi_tilda <- (2*pi)^(-d/2)*det(diag(psi_pa[t+1, (d+1):(d+d)]+1, nrow=d, ncol=d))^(-1/2)*
-      exp((-1/2)*t(as.vector(A%*%x) - psi_pa[t+1, 1:d])%*%diag((psi_pa[t+1, (d+1):(d+d)]+1)^(-1), nrow=d,ncol=d)%*%
-            (as.vector(A%*%x)-psi_pa[t+1, 1:d])) 
+      exp((-1/2)*t(A%*%x - psi_pa[t+1, 1:d])%*%diag((psi_pa[t+1, (d+1):(d+d)]+1)^(-1), nrow=d,ncol=d)%*%
+            (A%*%x-psi_pa[t+1, 1:d])) 
   }
   return(psi_tilda)
 }
@@ -102,7 +102,7 @@ change_mu <- function(n, w, X, L){
   s <- sample(1:Num, size = Num, replace = TRUE, prob = w_) 
   mus <- X[n-L,,]
   for(i in 1:Num){
-    sam[i,] <- rnorm(d) + as.vector(A%*%mus[s[i],])
+    sam[i,] <- rnorm(d) + A%*%mus[s[i],]
   }
   return(list(sam, w_))
 }
@@ -128,7 +128,7 @@ change_mupsi <- function(n, w, X, psi_pa, t, N, l, L){
   s <- sample(1:Num, size = Num, replace = TRUE, prob = w_) 
   mus <- X[n-L,,]
   for(i in 1:N[l]){
-    sam[i,] <- as.vector(f_aux(mus[s[i],], psi_pa, t))
+    sam[i,] <- f_aux(mus[s[i],], psi_pa, t)
     
   }
   return(list(sam, w_))
@@ -221,11 +221,12 @@ APF <- function(n, w, X, psi_pa, l, Z_apf, N, L){ #purely filtering particles
       w_apf[1:(n-L+1),i] <- log(g_aux(obs[n-L+1], X_apf[n-L+1,i,],n-L+1, psi_pa, n, L)) 
     }
   }else{
-    X_apf[1:(n-L+1),1:N[l]] <- change_mupsi(n, w, X, psi_pa, n-L+1, N, l, L)[[1]]
-    w_ <- change_mupsi(n, w, X, psi_pa, n-L+1, N, l)[[2]]
+    output <- change_mupsi(n, w, X, psi_pa, n-L+1, N, l, L)
+    X_apf[1:(n-L+1),1:N[l],] <- output[[1]]
+    w_ <- output[[2]]
     for (i in 1:N[l]){
-      w_apf[1:(n-L+1), i] <- log(sum(w_*dmvn(X_apf[n-L+1,,], as.vector(diag(((psi_pa[n-L+1, (d+1):(d+d)])^(-1)+1)^(-1), nrow=d,ncol=d)%*%
-                                                                         (A%*%X[n-L,i,] + diag(psi_pa[n-L+1, (d+1):(d+d)]^(-1), nrow=d,ncol=d)%*%psi_pa[n-L+1,1:d])),
+      w_apf[1:(n-L+1), i] <- log(sum(w_*dmvn(X_apf[n-L+1,,], diag(((psi_pa[n-L+1, (d+1):(d+d)])^(-1)+1)^(-1), nrow=d,ncol=d)%*%
+                                                                         (A%*%X[n-L,i,] + diag(psi_pa[n-L+1, (d+1):(d+d)]^(-1), nrow=d,ncol=d)%*%psi_pa[n-L+1,1:d]),
                                              diag(((psi_pa[n-L+1, (d+1):(d+d)])^(-1)+1)^(-1), nrow=d,ncol=d))))
     }
   }
