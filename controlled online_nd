@@ -11,9 +11,7 @@ Num <- 200 #total number of particles
 N <- vector()
 N[1] <- Num
 Time = 200
-#specific = Time
-#specific1 = 1#The specific time that we want to compare the distributions
-Lag = 8 #lag should always be divided by 4
+Lag = 8 #lag can be any integers <= Time which is divided by Time
 alpha = 0.42
 d = 2
 k <- 5
@@ -79,7 +77,7 @@ iAPF1 <- function(time_step, L) {
   psi <- output[[3]]
   
   #choose psi from 1 to 3L/4
-  psi_final <- psi[complete.cases(psi), ][1:(3*L/4),]
+  psi_final <- psi[complete.cases(psi), ][1:ceiling(3*L/4),]
   
   #Iteration
   #obtain 
@@ -103,15 +101,15 @@ iAPF1 <- function(time_step, L) {
       gap_matrix <- matrix(NA, nrow = L/2, ncol = 2*d)
       
       #take psi from kL+L/4+1 to kL+3L/4+1
-      psi_final <- rbind(psi_final, gap_matrix, psi[complete.cases(psi), ][(L/4 + 1):(3*L/4),])
+      psi_final <- rbind(psi_final, gap_matrix, psi[complete.cases(psi), ][ceiling(L/4 + 1):ceiling(3*L/4),])
     }  
   }
   return(psi_final)
 }
 
+
 psi_final <- iAPF1(Lag, Lag)
 ####the second layer of iAPF from t=1 to L to obtain psi####
-
 
 iAPF2 <- function(psi_final, time_step, L1, L) {
 #t = 1, . . . , L/2 to obtain X2, w2 and psi2
@@ -128,7 +126,7 @@ psi <- output[[3]]
 if(L < Time){
   #start from L/2 to 3L/2 to obtain psi2
   count = 0
-  for(time_step in seq(3*L/2,Time,L)){
+  for(time_step in seq(ceiling(3*L/2),Time,L)){
     #I didn't include any resampling in this step
     #Run iAPF with the initial distribution we defined 
     
@@ -144,7 +142,7 @@ if(L < Time){
     w <- output2[[2]]
     psi <- output2[[3]]
     
-    psi_final[(3*L/4+1+count*L):(3*L/4+count*L+ L/2),] <- psi[complete.cases(psi), ][(L/4 + 1):(3*L/4),]
+    psi_final[ceiling(3*L/4+1+count*L):ceiling(3*L/4+count*L+ L/2),] <- psi[complete.cases(psi), ][ceiling(L/4 + 1):ceiling(3*L/4),]
     
     count = count + 1
   }  
@@ -164,7 +162,7 @@ if(time_step != Time){
   X <- output2[[1]]
   w <- output2[[2]]
   psi <- output2[[3]]
-  psi_final <- rbind(psi_final, psi[complete.cases(psi), ][(L1/2 + 1):L1,])
+  psi_final <- rbind(psi_final, psi[complete.cases(psi), ][ceiling(L1/2 + 1):L1,])
 }
   return(psi_final)
 }
@@ -233,7 +231,7 @@ w_ <- exp(w[Time,]-mx)/sum(exp(w[Time,] - mx))
 
 #Mahalanobis distance
 for(specific in 1:Time){
-  weighted_mean <- colMeans(w_*X[specific,,])
+  weighted_mean <- colSums(w_*X[specific,,])
   output_s <- Smoothing(specific)
   fks_mean <- output_s[[1]]
   fks_cov <- output_s[[2]]
