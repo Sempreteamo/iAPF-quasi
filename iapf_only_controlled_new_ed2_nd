@@ -59,9 +59,9 @@ g_aux_smoo <- function(y, x, t, psi_pa, n){
 
 #twisted f
 f_aux <- function(x, psi_pa, t){
-  return(rmvn(1, diag(((psi_pa[t, (d+1):(d+d)])^(-2)+1)^(-1), nrow=d,ncol=d)%*%
-                (A%*%x + diag(psi_pa[t, (d+1):(d+d)]^(-2), nrow=d,ncol=d)%*%psi_pa[t,1:d]), 
-              diag(((psi_pa[t, (d+1):(d+d)])^(-2)+1)^(-1), nrow=d,ncol=d)))  #f_2:T 
+  return(rmvn(1, diag(((psi_pa[t, (d+1):(d+d)])^(-1)+1)^(-1), nrow=d,ncol=d)%*%
+                (A%*%x + diag(psi_pa[t, (d+1):(d+d)]^(-1), nrow=d,ncol=d)%*%psi_pa[t,1:d]), 
+              diag(((psi_pa[t, (d+1):(d+d)])^(-1)+1)^(-1), nrow=d,ncol=d)))  #f_2:T 
 }
 
 #psi.tilda_t = f (xt, ψt+1); psi.tilda_n = 1
@@ -69,8 +69,8 @@ psi_tilda <- function(x, psi_pa, t, n){  #from 0 to T. 0,T = 1
   if(t == n){
     psi_tilda <- 0
   }else{   #psi_pa_t = psi_t
-    psi_tilda <- log((2*pi)^(-d/2)) + log(det(diag(psi_pa[t+1, (d+1):(d+d)]^2+1, nrow=d, ncol=d))^(-1/2)) +
-      (-1/2)*t(A%*%x - psi_pa[t+1, 1:d])%*%diag((psi_pa[t+1, (d+1):(d+d)]^2+1)^(-1), nrow=d,ncol=d)%*%
+    psi_tilda <- log((2*pi)^(-d/2)) + log(det(diag(psi_pa[t+1, (d+1):(d+d)]+1, nrow=d, ncol=d))^(-1/2)) +
+      (-1/2)*t(A%*%x - psi_pa[t+1, 1:d])%*%diag((psi_pa[t+1, (d+1):(d+d)]+1)^(-1), nrow=d,ncol=d)%*%
       (A%*%x-psi_pa[t+1, 1:d]) 
   }
   return(psi_tilda)
@@ -81,8 +81,8 @@ psi_t <- function(x, psi_pa, t, n){
   if(t == (n + 1)){
     psi_t <- 0
   }else{
-    psi_t <- log((2*pi)^(-d/2)) + log(det(diag(psi_pa[t, (d+1):(d+d)]^2, nrow=d,ncol=d))^(-1/2)) +						
-      (-1/2)*t(x-psi_pa[t, 1:d])%*%diag((psi_pa[t, (d+1):(d+d)])^(-2), nrow=d,ncol=d)%*%						
+    psi_t <- log((2*pi)^(-d/2)) + log(det(diag(psi_pa[t, (d+1):(d+d)], nrow=d,ncol=d))^(-1/2)) +						
+      (-1/2)*t(x-psi_pa[t, 1:d])%*%diag((psi_pa[t, (d+1):(d+d)])^(-1), nrow=d,ncol=d)%*%						
       (x-psi_pa[t, 1:d])
   }
   return(psi_t)
@@ -118,9 +118,9 @@ change_mupsi <- function(n, w, X, psi_pa, t, N, l, L){
   
   for(i in 1:Num){
     w_adj[i] <- w[n-L,i]*exp(1/2*(t(A%*%X[n-L,i,]) + t(psi_pa[t,1:d])%*%
-                                    diag(psi_pa[t, (d+1):(d+d)]^(-2), nrow=d,ncol=d))%*%diag((psi_pa[t, (d+1):(d+d)]^(-2) + 1)^(-1), nrow=d,ncol=d)%*%
-                               (A%*%X[n-L,i,] + diag(psi_pa[t, (d+1):(d+d)]^(-2), nrow=d,ncol=d)%*%psi_pa[t,1:d]) - 1/2*(t(A%*%X[n-L,i,])%*%A%*%X[n-L,i,] +
-                                                                                                                           t(psi_pa[t,1:d])%*%diag(psi_pa[t, (d+1):(d+d)]^(-2), nrow=d,ncol=d)%*%psi_pa[t,1:d]))
+                                    diag(psi_pa[t, (d+1):(d+d)]^(-1), nrow=d,ncol=d))%*%diag((psi_pa[t, (d+1):(d+d)]^(-1) + 1)^(-1), nrow=d,ncol=d)%*%
+                               (A%*%X[n-L,i,] + diag(psi_pa[t, (d+1):(d+d)]^(-1), nrow=d,ncol=d)%*%psi_pa[t,1:d]) - 1/2*(t(A%*%X[n-L,i,])%*%A%*%X[n-L,i,] +
+                                                                                                                           t(psi_pa[t,1:d])%*%diag(psi_pa[t, (d+1):(d+d)]^(-1), nrow=d,ncol=d)%*%psi_pa[t,1:d]))
   }
   
   mx <- max(w_adj)
@@ -226,9 +226,9 @@ APF <- function(n, w, X, psi_pa, l, Z_apf, N, L){ #purely filtering particles
     w_ <- output[[2]]
     
     value <- t(A%*%t(X[n-L,,]))
-    cov_matrix <-  diag(((psi_pa[n-L+1, (d+1):(d+d)])^(-1)+1)^(-1), nrow=d,ncol=d)
-    mean_d1 <- diag(((psi_pa[n-L+1, (d+1):(d+d)])^(-1)+1)^(-1), nrow=d,ncol=d)
-    mean_d2 <- diag(psi_pa[n-L+1, (d+1):(d+d)]^(-1), nrow=d,ncol=d)%*%psi_pa[n-L+1,1:d]
+    cov_matrix <-  diag(((psi_pa[n-L+1, (d+1):(d+d)])^(-2)+1)^(-1), nrow=d,ncol=d)
+    mean_d1 <- diag(((psi_pa[n-L+1, (d+1):(d+d)])^(-2)+1)^(-1), nrow=d,ncol=d)
+    mean_d2 <- diag(psi_pa[n-L+1, (d+1):(d+d)]^(-2), nrow=d,ncol=d)%*%psi_pa[n-L+1,1:d]
     
     for (i in 1:N[l]){
       w_apf[1:(n-L+1), i] <- log(sum(w_*dmvn(X_apf[n-L+1,,], mean_d1%*%(A%*%t(X[n-L,,])[,i] + mean_d2), cov_matrix)))
