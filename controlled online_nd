@@ -11,7 +11,7 @@ Num <- 200 #total number of particles
 N <- vector()
 N[1] <- Num
 Time = 200
-Lag = 8 #lag can be any integers <= Time which is divided by Time
+Lag = 20 #lag can be any integers <= Time which is divided by Time
 alpha = 0.42
 d = 2
 k <- 5
