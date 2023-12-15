@@ -298,10 +298,10 @@ Psi <- function(l, n, X_apf, N, L){
                           lower=c(rep(-Inf, d),rep(0.1, d)), upper=rep(Inf, 2*d))$par
     }else{
       
-      psi_pa[t,] <- c(X_apf[t,which.max(psi[t,1:N[l]]),], rep(1, d))
-      #optim(par = c(X_apf[t,which.max(psi[t,1:N[l]]),], rep(1, d)), 
-      #                fn = fn, X_apf = X_apf, psi = psi, method='L-BFGS-B',
-      #              lower=c(rep(-Inf, d),rep(0.3, d)), upper=rep(Inf, 2*d))$par
+      psi_pa[t,] <- optim(par = c(X_apf[t,which.max(psi[t,1:N[l]]),], rep(1, d)), 
+                     fn = fn, X_apf = X_apf, psi = psi, method='L-BFGS-B',
+                   lower=c(rep(-Inf, d),rep(0.3, d)), upper=rep(Inf, 2*d))$par
+      #
       #c(X_apf[t,which.max(psi[t,1:N[l]]),], rep(1, d))
       
     }
