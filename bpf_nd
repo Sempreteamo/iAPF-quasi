@@ -1,0 +1,109 @@
+library(mvnfast)
+start = proc.time()
+set.seed(1)
+library(FKF)
+d=8
+Num <- 200
+Time = 200
+alpha = 0.42
+B = C = D = diag(1, nrow = d, ncol = d)
+A <- matrix(nrow = d, ncol = d)
+for (i in 1:d){
+  for (j in 1:d){
+    A[i,j] = alpha^(abs(i-j) + 1)
+  }
+}
+
+dt <- ct <- matrix(0,d,1)
+Tt <- A
+P0 <- Zt <- Ht <- Gt <- diag(1,d,d)
+a0 <- rep(0,d)
+
+X_true <- matrix(NA, Time, d)
+final2 <- vector()
+
+#avg <- matrix(nrow=50, ncol=Time)
+Obs <- function(){
+  #set.seed(seed)
+  X_true[1,] <- rnorm(d) 
+  for(t in 2:Time){  #observations
+    #set.seed(seed)
+    X_true[t,] <- rnorm(d) + as.vector(A%*%X_true[t-1,])  #t(rnorm(d) + A%*%x)
+  }
+  #set.seed(seed)
+  return(matrix(rnorm(Time*d, X_true, 1), ncol = d))
+}
+
+index = 1
+obs <- Obs()
+
+fkf.obj <- fkf(a0, P0, dt, ct, Tt, Zt, Ht, Gt, yt = t(obs))
+fks.obj <- fks(fkf.obj)
+Smoothing <- function(specific_time){
+  fks_mean <- fks.obj$ahatt[,specific_time]
+  fks_cov <- fks.obj$Vt[,,specific_time]
+  return(list(fks_mean, fks_cov))
+}
+
+for(qq in 1:1){
+  set.seed(qq)
+  print(qq)
+  
+  
+  X <- array(NA, dim = c(Time, Num, d))
+  w <- matrix(NA, Time, Num)
+  Z <- 0
+  
+  X[1,,] <- rmvn(Num, rep(0,d), B)
+  for(i in 1:Num){
+    w[1,i] <- dmvn(obs[1,], X[1,i,], D, log = TRUE)
+  }
+  
+  mx <- max(w[1, ])
+  #Z <- Z + log(mean(exp(w[1, ]-mx))) + mx
+  w_ <- exp(w[1,]-mx)/sum(exp(w[1,] - mx))
+  mix <- sample(1:Num, Num, replace = TRUE, prob = w_)
+  X[1,,] <- X[1,mix,]
+  
+  #V[1,] <- rep(1, Num)
+  
+  
+  for (t in 2:Time) {
+    print(t)
+    for(i in 1:Num){
+      X[t,i,] <- rmvn(1, as.vector(A%*%X[t-1,i,]), B)
+      w[t,i] <-  dmvn(obs[t,], X[t,i,], D, log = TRUE)
+    }
+    
+    
+    mx <- max(w[t, ])
+    #Z <- Z + log(mean(exp(w[t, ]-mx))) + mx
+    w_ <- exp(w[t,]-mx)/sum(exp(w[t,] - mx))
+    mix <- sample(1:Num, Num, replace = TRUE, prob = w_)
+    X[t,,] <- X[t,mix,]
+    
+    #V[t,] <- V[t-1,]
+    #V[t, -unique(I[t-1,mix])] <- t
+    
+    
+  }
+  mx <- max(w[1,]) 
+  #Z <- Z + log(mean(exp(w[Time,]-mx))) + mx
+  w_ <- exp(w[1,]-mx)/sum(exp(w[1,] - mx))
+  
+  for(specific in 1:Time){
+    weighted_mean <- colSums(w_*X[specific,,])
+    output_s <- Smoothing(specific)
+    fks_mean <- output_s[[1]]
+    fks_cov <- output_s[[2]]
+    MH_distance[specific] <- mahalanobis(weighted_mean, fks_mean, fks_cov)/d
+    print(MH_distance[specific])
+  }
+  
+ 
+  index = index + 1
+  
+}
+proc.time() - start
+
+write.csv(final2, file = "BPF.csv")
