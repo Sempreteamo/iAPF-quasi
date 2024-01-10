@@ -1,0 +1,79 @@
+library(mvnfast)
+start = proc.time()
+set.seed(1)
+library(FKF)
+d=2
+Num <- 200
+Time = 200
+alpha = 0.42
+B = C = D = diag(1, nrow = d, ncol = d)
+A <- matrix(nrow = d, ncol = d)
+for (i in 1:d){
+  for (j in 1:d){
+    A[i,j] = alpha^(abs(i-j) + 1)
+  }
+}
+
+dt <- ct <- matrix(0,d,1)
+Tt <- A
+P0 <- Zt <- Ht <- Gt <- diag(1,d,d)
+a0 <- rep(0,d)
+
+X_true <- matrix(NA, Time, d)
+final2 <- vector()
+
+#avg <- matrix(nrow=50, ncol=Time)
+Obs <- function(){
+  #set.seed(seed)
+  X_true[1,] <- rnorm(d) 
+  for(t in 2:Time){  #observations
+    #set.seed(seed)
+    X_true[t,] <- rnorm(d) + as.vector(A%*%X_true[t-1,])  #t(rnorm(d) + A%*%x)
+  }
+  #set.seed(seed)
+  return(matrix(rnorm(Time*d, X_true, 1), ncol = d))
+}
+
+index = 1
+obs <- Obs()
+log_Q <- vector()
+
+fkf.obj <- fkf(a0, P0, dt, ct, Tt, Zt, Ht, Gt, yt = t(obs))
+fks.obj <- fks(fkf.obj)
+Smoothing <- function(specific_time){
+  fks_mean <- fks.obj$ahatt[,specific_time]
+  fks_cov <- fks.obj$Vt[,,specific_time]
+  return(list(fks_mean, fks_cov))
+}
+
+g <- function(y, x){  
+  return (log((2*pi)^(-d/2)) + (-1/2)*t(y-x)%*%(y-x)) #obs prob  C%*%x = x
+}
+
+for(qq in 1:1){
+  set.seed(qq)
+  
+  X <- array(NA, dim = c(Time, Num, d))
+  w <- matrix(NA, Time, Num)
+  Z <- 0
+  
+  X[1,,] <- rmvn(Num, rep(0,d), B)  # Initialize N streams of particles.
+  w[1,] <- 0
+  
+  for(n in 2:Time){
+    X[n,,] <- rnorm(Time*d) + t(A%*%t(X[n-1,,])) #Draw/compute μ(i)
+    for(i in 1:Num){
+      log_Q[i] <- g(obs[n,], X[n,i,]) + w[n-1,i] #Qi = p(yn|μ(i)n )W(i)n−1
+    }
+    
+    #Compute normalized Qi
+    mx <- max(log_Q)
+    log_Q <- exp(log_Q - mx)/sum(exp(log_Q - mx))
+    
+    mix <- sample(1:Num, Num, replace = TRUE, prob = log_Q)
+    
+    X[n,,] <- rnorm(Time*d) + t(A%*%t(X[n-1,mix,])) #Draw x(i)n ∼ p(x|x(in−1)n−1 )
+    
+  }
+                                                                                                           
+  
