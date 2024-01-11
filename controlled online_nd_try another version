@@ -77,12 +77,12 @@ iAPF1 <- function(time_step, L) {
   psi <- output[[3]]
   
   #choose psi from 1 to 3L/4
-  psi_final <- psi[complete.cases(psi), ][1:ceiling(3*L/4),]
+  psi_final <- psi[complete.cases(psi), ][1:ceiling(L/4),]
   
   #Iteration
   #obtain 
   if(L < Time){
-    for(time_step in seq(2*L,Time,L)){
+    for(time_step in seq(5*L/4,Time,L)){
       
       #I didn't include any resampling in this step
       #Run iAPF with the initial distribution we defined 
@@ -101,73 +101,78 @@ iAPF1 <- function(time_step, L) {
       gap_matrix <- matrix(NA, nrow = L/2, ncol = 2*d)
       
       #take psi from kL+L/4+1 to kL+3L/4+1
-      psi_final <- rbind(psi_final, gap_matrix, psi[complete.cases(psi), ][ceiling(L/4 + 1):ceiling(3*L/4),])
+      psi_final <- rbind(psi_final, gap_matrix, psi[complete.cases(psi), ][ceiling(L/2 + 1):L,])
     }  
   }
   return(psi_final)
 }
 
-
 psi_final <- iAPF1(Lag, Lag)
 ####the second layer of iAPF from t=1 to L to obtain psi####
 
 iAPF2 <- function(psi_final, time_step, L1, L) {
-#t = 1, . . . , L/2 to obtain X2, w2 and psi2
+  #t = 1, . . . , L/2 to obtain X2, w2 and psi2
   psi_final <- psi_final
   L1 <- L1
   L <- L
   
-output <- Init(time_step, L1) #pass
-X <- output[[1]] 
-w <- output[[2]]
-psi <- output[[3]]    
-
-####Algorithm####
-if(L < Time){
-  #start from L/2 to 3L/2 to obtain psi2
-  count = 0
-  for(time_step in seq(ceiling(3*L/2),Time,L)){
-    #I didn't include any resampling in this step
-    #Run iAPF with the initial distribution we defined 
+  output <- Init(time_step, L1) #pass
+  X <- output[[1]] 
+  w <- output[[2]]
+  psi <- output[[3]]    
+  psi_final[(ceiling(L/4) + 1):ceiling(3*L/4),] <- psi[complete.cases(psi), ][(ceiling(L/4) + 1):ceiling(3*L/4),]
+  
+  ####Algorithm####
+  if(L < Time){
+    #start from L/2 to 3L/2 to obtain psi2
+    count = 1
+    for(time_step in seq(2*L,Time,L)){
+      #I didn't include any resampling in this step
+      #Run iAPF with the initial distribution we defined 
+      
+      output <- init_APF(time_step, w, X, L)
+      X_apf <- output[[1]]
+      w_apf <- output[[2]]
+      Z_apf <- output[[3]]
+      
+      output2 <- psi_APF(time_step, X_apf, Z_apf, w, X, L)
+      
+      #smoothing particles
+      X <- output2[[1]]
+      w <- output2[[2]]
+      psi <- output2[[3]]
+      
+      if(time_step != Time){
+        psi_final[ceiling(L/4+1+count*L):ceiling(L/4+count*L+ L/2),] <- psi[complete.cases(psi), ][ceiling(L/4 + 1):ceiling(3*L/4),]
+      }else{
+        psi_final <- rbind(psi_final, psi[complete.cases(psi), ][ceiling(L/4 + 1):L,])
+      }
+      
+      
+      count = count + 1
+    }  
+  }
+  
+  #if(time_step != Time){
+   # time_step <- Time
     
-    output <- init_APF(time_step, w, X, L)
-    X_apf <- output[[1]]
-    w_apf <- output[[2]]
-    Z_apf <- output[[3]]
+    #output <- init_APF(time_step, w, X, L1)
+    #X_apf <- output[[1]]
+    #w_apf <- output[[2]]
+    #Z_apf <- output[[3]]
     
-    output2 <- psi_APF(time_step, X_apf, Z_apf, w, X, L)
+    #output2 <- psi_APF(time_step, X_apf, Z_apf, w, X, L1)
     
     #smoothing particles
-    X <- output2[[1]]
-    w <- output2[[2]]
-    psi <- output2[[3]]
-    
-    psi_final[ceiling(3*L/4+1+count*L):ceiling(3*L/4+count*L+ L/2),] <- psi[complete.cases(psi), ][ceiling(L/4 + 1):ceiling(3*L/4),]
-    
-    count = count + 1
-  }  
-}
-
-if(time_step != Time){
-  time_step <- Time
-  
-  output <- init_APF(time_step, w, X, L1)
-  X_apf <- output[[1]]
-  w_apf <- output[[2]]
-  Z_apf <- output[[3]]
-  
-  output2 <- psi_APF(time_step, X_apf, Z_apf, w, X, L1)
-  
-  #smoothing particles
-  X <- output2[[1]]
-  w <- output2[[2]]
-  psi <- output2[[3]]
-  psi_final <- rbind(psi_final, psi[complete.cases(psi), ][ceiling(L1/2 + 1):L1,])
-}
+    #X <- output2[[1]]
+    #w <- output2[[2]]
+    #psi <- output2[[3]]
+    #psi_final <- rbind(psi_final, psi[complete.cases(psi), ][ceiling(L1/2 + 1):L1,])
+  #}
   return(psi_final)
 }
 
-psi_final <- iAPF2(psi_final, Lag/2, Lag/2, Lag)
+psi_final <- iAPF2(psi_final, Lag, Lag, Lag)
 
 ####psi-APF####
 #purely smoothing particles and normalizing constant
@@ -236,7 +241,54 @@ for(specific in 1:Time){
   fks_mean <- output_s[[1]]
   fks_cov <- output_s[[2]]
   MH_distance[specific] <- mahalanobis(weighted_mean, fks_mean, fks_cov)/d
+  print(MH_distance[specific])
 }
 
 plot(MH_distance)
 normalizing_c <- exp(Z-fkf.obj_Z)
+title('N200T200L8d35')
+
+
+#Calculation of the mean and variance of empirical distribution
+#Here 'weighted_mean' is the empirical mean, 'variance' is the empirical variance
+Empirical <- function(X, w_, specific_time){
+  weighted_mean <- sum(w_*X[specific_time,])
+  s_mean <- sum(w_*X[specific_time,]^2)
+  variance <- s_mean - weighted_mean^2
+  return(list(weighted_mean, variance))
+}
+
+#output_e <- Empirical(X, w_, specific)
+#weighted_mean <- output_e[[1]]
+#variance <- output_e[[2]]
+#empirical distribution function
+#the equation of dKS(F, G) below is in the notes
+
+dKS <- function(X, w_, specific_time) {
+  output_s <- Smoothing(specific_time)
+  fks_mean <- output_s[[1]]
+  fks_var <- output_s[[2]]
+  
+  #the replacement of the weights and particles matrices
+  X_ <- X
+  w_c <- w_
+  
+  d <- vector()
+  order <- order(X[specific_time,,])
+  X_[specific_time,,] <- sort(X[specific_time,,])
+  w_c <- w_[order]
+  cumsum_w <- cumsum(w_c)
+  f <- pnorm(X_[specific_time,,], mean = fks_mean, sd = sqrt(fks_var)) 
+  d <- abs(f - cumsum_w)
+  return(max(d))
+}.
+
+#KS_distance <- dKS(X, w_, specific)
+normalizing_c <- exp(Z-fkf.obj_Z)
+#KS_distance_start <- dKS(X, w_, specific1)
+
+for(specific in 1:Time){
+  KS_distance[specific] <- dKS(X, w_, specific)
+}
+
+
