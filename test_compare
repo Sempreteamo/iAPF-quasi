@@ -11,25 +11,31 @@ ESS <- function(t,w, is.log=FALSE){
   return(ess)  
 }
 
+Num_apf <- function(Z, l, k){
+  return(sd(exp(Z[max(l-k,1):l]-max(Z[max(l-k,1):l])))/mean(exp(Z[max(l-k,1):l]-max(Z[max(l-k,1):l]))))
+}
+
 #trans prob
 #N(; Ax, B)
 f <- function(x){
+  #set.seed(123)
   return (rnorm(d) + as.vector(A*x))   
 }
 
 #obs prob  
 #N(; Cx, D)
-g <- function(y, x){  
+g <- function(y, x){  #pass
   return (det(diag(2*pi, nrow = d, ncol = d))^(-1/2)*exp((-1/2)*(y-x)^2)) 
 }
 
 #twisted mu
 mu_aux <- function(psi_pa, l, N, t){
-  return(rnorm(N[l], mean =  psi_pa[t,1]/(1+psi_pa[t,2]^2), sd = psi_pa[t,2]^2/(1+psi_pa[t,2]^2)))
+  #set.seed(123)
+  return(rnorm(N[l], mean =  psi_pa[t,1]/(1+psi_pa[t,2]^2), sd = sqrt(psi_pa[t,2]^2/(1+psi_pa[t,2]^2))))
 }
 
 #twisted g
-g_aux <- function(y, x, t, psi_pa, n){  
+g_aux <- function(y, x, t, psi_pa, n, L){  #pass
   if(t == (n-L+1)){
     return(dnorm(x, y)*psi_tilda(x, psi_pa, t, n)*(2*pi*(psi_pa[t, 2]^2+1))^
              (-1/2)*exp((-1/2)*(-psi_pa[t, 1])^2/(psi_pa[t, 2]^2+1))/psi_t(x, psi_pa, t, n))  #initialisation of g = t=1 or t=L?
@@ -38,14 +44,24 @@ g_aux <- function(y, x, t, psi_pa, n){
   }
 }
 
+g_aux_smoo <- function(y, x, t, psi_pa, n){  #pass
+  if(t == 1){
+    return(dnorm(x, y)*psi_tilda(x, psi_pa, t, n)*(2*pi*(psi_pa[t, 2]^2+1))^
+             (-1/2)*exp((-1/2)*(-psi_pa[t, 1])^2/(psi_pa[t, 2]^2+1))/psi_t(x, psi_pa, t, n))  #initialisation of g = t=1 or t=L?
+  }else{
+    return(dnorm(x, y)*psi_tilda(x, psi_pa, t, n)/psi_t(x, psi_pa, t, n))  #g_2:T 
+  }
+}
+
 #twisted f
-f_aux <- function(x, psi_pa, t){
+f_aux <- function(x, psi_pa, t){ #pass
+  #set.seed(123)
   return(rnorm(1, (psi_pa[t,2]^2*A*x +psi_pa[t,1])/(psi_pa[t,2]^2+1), 
                sqrt(psi_pa[t,2]^2 / (psi_pa[t,2]^2+1))))  #f_2:T 
 }
 
 #psi.tilda_t = f (xt, ψt+1); psi.tilda_n = 1
-psi_tilda <- function(x, psi_pa, t, n){   
+psi_tilda <- function(x, psi_pa, t, n){   #pass
   if(t == n){
     psi_tilda <- 1
   }else{   #psi_pa_t = psi_t
@@ -56,7 +72,7 @@ psi_tilda <- function(x, psi_pa, t, n){
 }
 
 #ψt(xt) = N (xt; m_t, Σ_t), m_t, Σ_t obtained in Psi function
-psi_t <- function(x, psi_pa, t, n){  
+psi_t <- function(x, psi_pa, t, n){   #pass
   if(t == (n + 1)){
     psi_t <- 1
   }else{
@@ -72,13 +88,15 @@ psi_t <- function(x, psi_pa, t, n){
 #I used the weights at time (k-1)L because these are the closest weights, 
 #sample particles X_{kL-L+1} using the particles at time X_(k-1)L
 
-change_mu <- function(n, w, X){
+change_mu <- function(n, w, X, L){
   sample <- vector()
   mx <- max(w[n-L,])
   w_ <- exp(w[n-L,]-mx)/sum(exp(w[n-L,] - mx))
+  #set.seed(123)
   s <- sample(1:Num, size = Num, replace = TRUE, prob = w_) 
   mus <- X[n-L,]
   for(i in 1:Num){
+    #set.seed(123)
     sample[i] <- rnorm(1, mean = A*mus[s[i]], B)
   }
   return(list(sample, w_))
@@ -88,7 +106,7 @@ change_mu <- function(n, w, X){
 #the particles and weights I use are exactly the same as above, and I use
 #f.tilda to generate particles instead of f
 
-change_mupsi <- function(n, w, X, psi_pa, t, N, l){
+change_mupsi <- function(n, w, X, psi_pa, t, N, l, L){ #pass
   sample <- vector()
   
   #here we need to adjust the weights
@@ -97,9 +115,11 @@ change_mupsi <- function(n, w, X, psi_pa, t, N, l){
   
   mx <- max(w_adj)
   w_ <- exp(w_adj - mx)/sum(exp(w_adj - mx))
+  #set.seed(123)
   s <- sample(1:Num, size = Num, replace = TRUE, prob = w_) 
   mus <- X[n-L,]
   for(i in 1:N[l]){
+    #set.seed(123)
     sample[i] <- f_aux(mus[s[i]], psi_pa, t)
     
   }
@@ -108,15 +128,15 @@ change_mupsi <- function(n, w, X, psi_pa, t, N, l){
 
 ####iapf
 ####Initialization####
-Init <- function(time_step){
-  
+Init <- function(time_step, L){
+  L <- L
   n <- time_step
-  output <- init_APF(n, w = 0, X = 0)
+  output <- init_APF(n, w = 0, X = 0, L)
   X_apf <- output[[1]]
   w_apf <- output[[2]]
   Z_apf <- output[[3]]
   
-  output2 <- psi_APF(n, X_apf, Z_apf, w = 0, X = 0)
+  output2 <- psi_APF(n, X_apf, Z_apf, w = 0, X = 0, L)
   X <- output2[[1]]
   w <- output2[[2]]
   psi <- output2[[3]]
@@ -127,20 +147,22 @@ Init <- function(time_step){
 #Below is the iAPF algorithm
 #First we do the initialization
 ####init_APF####
-init_APF <- function(n, w, X){  #pure filtering
+init_APF <- function(n, w, X, L){  #pure filtering
   l = 1
   Z_apf[1] = 0
   X_init <- matrix(NA, Time, N[l])
   w_init <- matrix(NA, Time, N[l])
+  re = 0
   #when n = L, we use the mu as the initialization distribution mu; 
   #when n = kL, we use the new distribution
   #I tried to modify the previous paths from 1 to n-L+1
   if(n == L){
+    #set.seed(123)
     X_init[1:(n-L+1),] <- rnorm(N[l])  
     w_init[1:(n-L+1),] <- dnorm(X_init[n-L+1,], obs[n-L+1], log = TRUE)
   }else{
-    X_init[1:(n-L+1),] <- change_mu(n, w, X)[[1]]
-    w_ <- change_mu(n, w, X)[[2]]
+    X_init[1:(n-L+1),] <- change_mu(n, w, X, L)[[1]]
+    w_ <- change_mu(n, w, X, L)[[2]]
     
     for (i in 1:Num){
       w_init[1:(n-L+1), i] <- log(sum(w_*dnorm(X_init[n-L+1,], A*X[n-L,i], B)))
@@ -148,18 +170,21 @@ init_APF <- function(n, w, X){  #pure filtering
   }
   
   for(t in (n-L+2):n){
+    re = re +1
     
     if(ESS(t, w_init, is.log=TRUE) <= kappa*N[l]){
       mx <- max(w_init[t-1,])
       w_ <- exp(w_init[t-1,] - mx)/sum(exp(w_init[t-1,] - mx))
       Z_apf[1] = Z_apf[1] + log(mean(exp(w_init[t-1,] - mx))) + mx
+      #set.seed(123)
       mix <- sample(1:N[l], N[l], replace = TRUE, prob = w_)
       # at the initialization stage, we want filtering particles for psi
-      
+      #set.seed(123)
       X_init[t,1:N[l]] <- rnorm(N[l]) + A*X_init[t-1, mix]   
       w_init[t,1:N[l]] <- dnorm(X_init[t,mix], obs[t], log = TRUE) 
       
     }else{
+      #set.seed(123)
       X_init[t,1:N[l]] <- rnorm(N[l]) + A*X_init[t-1,] 
       w_init[t,1:N[l]] <- w_init[t-1,] + dnorm(X_init[t,], obs[t], log = TRUE)
     }
@@ -172,7 +197,7 @@ init_APF <- function(n, w, X){  #pure filtering
 
 #Within the iAPF scheme, when the number of iterations l >= 2, run APF
 ####APF####
-APF <- function(n, w, X, psi_pa, l, Z_apf, N){ #purely filtering particles
+APF <- function(n, w, X, psi_pa, l, Z_apf, N, L){ #purely filtering particles
   #l >= 2
   X_apf <- matrix(NA, Time, N[l])
   w_apf <- matrix(NA, Time, N[l])
@@ -182,12 +207,12 @@ APF <- function(n, w, X, psi_pa, l, Z_apf, N){ #purely filtering particles
   if(n == L){
     X_apf[1:(n-L+1),1:N[l]] <- mu_aux(psi_pa, l, N, n-L+1) 
     for(i in 1:N[l]){
-      w_apf[1:(n-L+1),i] <- log(g_aux(obs[n-L+1], X_apf[n-L+1,i],n-L+1, psi_pa, n)) 
+      w_apf[1:(n-L+1),i] <- log(g_aux(obs[n-L+1], X_apf[n-L+1,i],n-L+1, psi_pa, n, L)) 
     }
   }else{
-    X_apf[1:(n-L+1),1:N[l]] <- change_mupsi(n, w, X, psi_pa, n-L+1, N, l)[[1]]
-    w_ <- change_mupsi(n, w, X, psi_pa, n-L+1, N, l)[[2]]
-    for (i in 1:N[l]){
+    X_apf[1:(n-L+1),1:N[l]] <- change_mupsi(n, w, X, psi_pa, n-L+1, N, l, L)[[1]]
+    w_ <- change_mupsi(n, w, X, psi_pa, n-L+1, N, l, L)[[2]]
+    for (i in 1:N[l]){ #pass
       w_apf[1:(n-L+1), i] <- log(sum(w_*dnorm(X_apf[n-L+1,], (psi_pa[n-L+1,2]^2*A*X[n-L,i] +psi_pa[n-L+1,1])/(psi_pa[n-L+1,2]^2+1),
                                               sqrt(psi_pa[n-L+1,2]^2 / (psi_pa[n-L+1,2]^2+1)))))
     }
@@ -200,12 +225,13 @@ APF <- function(n, w, X, psi_pa, l, Z_apf, N){ #purely filtering particles
       mx <- max(w_apf[t-1,])
       w_ <- exp(w_apf[t-1,1:N[l]]-mx)/sum(exp(w_apf[t-1, 1:N[l]] - mx))
       Z_apf[l] = Z_apf[l] + log(mean(exp(w_apf[t-1,]-mx))) + mx
+      #set.seed(123)
       mix <- sample(1:N[l],N[l], replace = TRUE, prob = w_)
       
       for(i in 1:N[l]){
         #filtering particles
         X_apf[t,i] <- f_aux(X_apf[t-1, mix[i]], psi_pa, t)
-        w_apf[t,i] <- log(g_aux(obs[t], X_apf[t,mix[i]], t, psi_pa, n))  
+        w_apf[t,i] <- log(g_aux(obs[t], X_apf[t,mix[i]], t, psi_pa, n, L))  
         
       }
     }else{
@@ -213,7 +239,7 @@ APF <- function(n, w, X, psi_pa, l, Z_apf, N){ #purely filtering particles
       for(i in 1:N[l]){
         #filtering particles
         X_apf[t,i] <- f_aux(X_apf[t-1,i], psi_pa, t) 
-        w_apf[t,i] <- w_apf[t-1,i] + log(g_aux(obs[t], X_apf[t,i], t, psi_pa, n))
+        w_apf[t,i] <- w_apf[t-1,i] + log(g_aux(obs[t], X_apf[t,i], t, psi_pa, n, L))
       }
     }
     
@@ -225,7 +251,7 @@ APF <- function(n, w, X, psi_pa, l, Z_apf, N){ #purely filtering particles
 }
 
 ####Psi####
-Psi <- function(l, n, X_apf, N){
+Psi <- function(l, n, X_apf, N, L){
   psi <- matrix(NA, nrow = Time, ncol = N[l])
   psi_pa <- matrix(NA, nrow = Time, ncol = 2)
   
@@ -262,7 +288,7 @@ Psi <- function(l, n, X_apf, N){
 
 #The main part of iAPF to iterate and terminate
 ####psi_APF####
-psi_APF <- function(n, X_apf, Z_apf, w, X){
+psi_APF <- function(n, X_apf, Z_apf, w, X, L){
   l = 1
   
   while(TRUE){
@@ -274,7 +300,7 @@ psi_APF <- function(n, X_apf, Z_apf, w, X){
       #APF outputs filtering X_apf for the next psi, and smoothing X_apf_s
       #for the final calculation
       
-      output <- APF(n, w, X, psi_pa, l, Z_apf, N)
+      output <- APF(n, w, X, psi_pa, l, Z_apf, N, L)
       X_apf <- output[[1]]
       w_apf <- output[[2]]
       Z_apf <- output[[3]]
@@ -286,7 +312,7 @@ psi_APF <- function(n, X_apf, Z_apf, w, X){
     if(l <= k ){
       
       #receive filtering particles X_apf for psi
-      psi_pa <- Psi(l, n, X_apf, N) 
+      psi_pa <- Psi(l, n, X_apf, N, L) 
       
       if(l > k & N[max(l-k,1)] == N[l] & is.unsorted(Z_apf[max(l-k,1):l])){  
         N[l+1] <- 2*N[l]
@@ -303,60 +329,4 @@ psi_APF <- function(n, X_apf, Z_apf, w, X){
   return(list(X_apf, w_apf, psi_pa))
 }
 
-####psi-APF####
-#purely smoothing particles and normalizing constant
-smoothing_APF <- function(n, psi_pa, l){ 
-  #l >= 2
-  X_apf <- matrix(NA, Time, Num)
-  w_apf <- matrix(NA, Time, Num)
-  
-  Z_apf[l] <- 0
-  
-  #when n = kL, we use the new mu.tilda to initialize particles
-  
-  if(n == L){
-    X_apf[1:(n-L+1),1:N[l]] <- mu_aux(psi_pa, l, N, n-L+1) 
-    for(i in 1:N[l]){
-      w_apf[1:(n-L+1),i] <- log(g_aux(obs[n-L+1], X_apf[n-L+1,i],n-L+1, psi_pa, n)) 
-    }
-  }else{
-    X_apf[1:(n-L+1),1:N[l]] <- change_mupsi(n, w, X, psi_pa, n-L+1, N, l)[[1]]
-    w_ <- change_mupsi(n, w, X, psi_pa, n-L+1, N, l)[[2]]
-    for (i in 1:N[l]){
-      w_apf[1:(n-L+1), i] <- log(sum(w_*dnorm(X_apf[n-L+1,], (psi_pa[n-L+1,2]^2*A*X[n-L,i] +psi_pa[n-L+1,1])/(psi_pa[n-L+1,2]^2+1),
-                                              sqrt(psi_pa[n-L+1,2]^2 / (psi_pa[n-L+1,2]^2+1)))))
-    }
-  }
-  
-  for(t in (n-L+2):n){
-    
-    if(ESS(t,w_apf, is.log = TRUE) <= kappa*Num){
-      
-      mx <- max(w_apf[t-1,])
-      w_ <- exp(w_apf[t-1,1:Num]-mx)/sum(exp(w_apf[t-1, 1:Num] - mx))
-      Z_apf[l] = Z_apf[l] + log(mean(exp(w_apf[t-1,]-mx))) + mx
-      mix <- sample(1:Num,Num, replace = TRUE, prob = w_)
-      X_apf <- X_apf[, mix]
-      
-      for(i in 1:Num){
-        #filtering particles
-        X_apf[t,i] <- f_aux(X_apf[t-1, i], psi_pa, t)
-        w_apf[t,i] <- log(g_aux(obs[t], X_apf[t,i], t, psi_pa, n))  
-        
-      }
-    }else{
-      
-      for(i in 1:Num){
-        #filtering particles
-        X_apf[t,i] <- f_aux(X_apf[t-1,i], psi_pa, t) 
-        w_apf[t,i] <- w_apf[t-1,i] + log(g_aux(obs[t], X_apf[t,i], t, psi_pa, n))
-      }
-    }
-    
-  }
-  
-  mx <- max(w_apf[n, 1:Num])
-  Z_apf[l] <- Z_apf[l] + log(mean(exp(w_apf[n, 1:Num]-mx))) + mx
-  
-  return(list(X_apf, w_apf, Z_apf))
-}
+
