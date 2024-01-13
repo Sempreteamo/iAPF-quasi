@@ -9,10 +9,10 @@ set.seed(1)
 Num <- 200 #total number of particles
 N <- vector()
 N[1] <- Num
-Time = 200
+Time = 100
 #specific = Time
 #specific1 = 1#The specific time that we want to compare the distributions
-Lag = 8 #lag
+Lag = 20 #lag
 A = 0.42
 B = 1
 C = 1
@@ -30,13 +30,17 @@ P0 <- Zt <- Ht <- Gt <- as.matrix(1)
 a0 <- 0
 index <- 1
 psi_final <- matrix(NA, nrow = Time, ncol = 2)
+MH_distance <- vector()
 KS_distance <- vector()
 
 Obs <- function(){
+  #set.seed(123)
   X_true[1] <- rnorm(1)   
   for(t in 2:(Time )){  #observations
+    #set.seed(123)
     X_true[t] <- rnorm(1) + A*X_true[t-1] 
   }
+  #set.seed(123)
   return(rnorm(Time ) + X_true)
 }
 obs <- Obs()
@@ -189,6 +193,7 @@ smoothing_APF <- function(psi_pa, N, Time){
       mx <- max(w_apf[t-1,])
       w_ <- exp(w_apf[t-1,1:Num]-mx)/sum(exp(w_apf[t-1, 1:Num] - mx))
       Z_apf = Z_apf + log(mean(exp(w_apf[t-1,]-mx))) + mx
+      #set.seed(123)
       mix <- sample(1:Num,Num, replace = TRUE, prob = w_)
       X_apf <- X_apf[, mix]
       
@@ -225,6 +230,16 @@ mx <- max(w[Time,])
 #mx <- max(w[specific,]) 
 #w_ <- exp(w[specific,]-mx)/sum(exp(w[specific,] - mx))
 w_ <- exp(w[Time,]-mx)/sum(exp(w[Time,] - mx))
+
+for(specific in 1:Time){
+  weighted_mean <- sum(w_*X[specific,])
+  output_s <- Smoothing(specific)
+  fks_mean <- output_s[[1]]
+  fks_cov <- output_s[[2]]
+  MH_distance[specific] <- mahalanobis(weighted_mean, fks_mean, fks_cov)/d
+}
+
+plot(MH_distance)
 
 #Calculation of the mean and variance of empirical distribution
 #Here 'weighted_mean' is the empirical mean, 'variance' is the empirical variance
@@ -267,5 +282,6 @@ normalizing_c <- exp(Z-fkf.obj_Z)
 for(specific in 1:Time){
   KS_distance[specific] <- dKS(X, w_, specific)
 }
+plot(KS_distance)
 
 proc.time() - start
