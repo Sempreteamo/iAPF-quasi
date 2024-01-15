@@ -10,10 +10,10 @@ set.seed(1)
 Num <- 200 #total number of particles
 N <- vector()
 N[1] <- Num
-Time = 100
+Time = 200
 Lag = 8 #lag can be any integers <= Time which is divided by Time
 alpha = 0.42
-d = 1
+d = 2
 k <- 5
 tau <- 0.5
 kappa = 0.5
@@ -37,13 +37,13 @@ KS_distance <- vector()
 
 Obs <- function(){
   #set.seed(123)
-  X_true[1,] <- rmvn(d,0,1)     
+  X_true[1,] <- rnorm(d)     
   for(t in 2:Time){ 
     #set.seed(123)#observations
-    X_true[t,] <- rmvn(d,0,1) + A%*%X_true[t-1,]  #t(rmvn(d) + A%*%x)
+    X_true[t,] <- rnorm(d) + A%*%X_true[t-1,]  #t(rmvn(d) + A%*%x)
   }
   #set.seed(123)
-  return(matrix(rmvn(Time*d, X_true, diag(1,d*Time)), ncol = d))
+  return(matrix(rnorm(Time*d, X_true, 1), ncol = d))
 }
 obs <- Obs()
 
@@ -123,12 +123,13 @@ w <- output[[2]]
 psi <- output[[3]]    
 
 ####Algorithm####
-if(L < Time){
+
   #start from L/2 to 3L/2 to obtain psi2
-  count = 0
-  for(time_step in seq(ceiling(3*L/2),Time,L)){
+count = 0
+  for(time_step in seq(ceiling(3*L/2),Time, L)){
     #I didn't include any resampling in this step
     #Run iAPF with the initial distribution we defined 
+    
     
     output <- init_APF(time_step, w, X, L)
     X_apf <- output[[1]]
@@ -142,11 +143,15 @@ if(L < Time){
     w <- output2[[2]]
     psi <- output2[[3]]
     
+    if(time_step < Time){
     psi_final[ceiling(3*L/4+1+count*L):ceiling(3*L/4+count*L+ L/2),] <- psi[complete.cases(psi), ][ceiling(L/4 + 1):ceiling(3*L/4),]
+    }
     
+    if(time_step == Time){
+      psi_final <- rbind(psi_final, psi[complete.cases(psi), ][ceiling(L1/2 + 1):ceiling(L1/2 + Time - nrow(psi_final)),])
+    }
     count = count + 1
-  }  
-}
+  }
 
 if(time_step != Time){
   time_step <- Time
@@ -164,10 +169,11 @@ if(time_step != Time){
   psi <- output2[[3]]
   psi_final <- rbind(psi_final, psi[complete.cases(psi), ][ceiling(L1/2 + 1):L1,])
 }
+
   return(psi_final)
 }
 
-psi_final <- iAPF2(psi_final, Lag/2, Lag/2, Lag)
+psi_final <- iAPF2(psi_final, ceiling(Lag/2), ceiling(Lag/2), Lag)
 
 ####psi-APF####
 #purely smoothing particles and normalizing constant
