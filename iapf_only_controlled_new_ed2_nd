@@ -172,7 +172,7 @@ init_APF <- function(n, w, X, L){  #pure filtering
   }else{
     output <- change_mu(n, w, X, L)
     X_init[1:(n-L+1),,] <- output[[1]]
-    w_ <- output[[2]]
+    w_ <- 1
     
     for (i in 1:Num){
       w_init[1:(n-L+1), i] <- log(sum(w_*dmvn(X_init[n-L+1,,], A%*%X[n-L,i,], B)))
@@ -223,12 +223,12 @@ APF <- function(n, w, X, psi_pa, l, Z_apf, N, L){ #purely filtering particles
   }else{
     output <- change_mupsi(n, w, X, psi_pa, n-L+1, N, l, L)
     X_apf[1:(n-L+1),1:N[l],] <- output[[1]]
-    w_ <- output[[2]]
+    w_ <- 1
     
     value <- t(A%*%t(X[n-L,,]))
-    cov_matrix <-  diag(((psi_pa[n-L+1, (d+1):(d+d)])^(-2)+1)^(-1), nrow=d,ncol=d)
-    mean_d1 <- diag(((psi_pa[n-L+1, (d+1):(d+d)])^(-2)+1)^(-1), nrow=d,ncol=d)
-    mean_d2 <- diag(psi_pa[n-L+1, (d+1):(d+d)]^(-2), nrow=d,ncol=d)%*%psi_pa[n-L+1,1:d]
+    cov_matrix <-  diag(((psi_pa[n-L+1, (d+1):(d+d)])^(-1)+1)^(-1), nrow=d,ncol=d)
+    mean_d1 <- diag(((psi_pa[n-L+1, (d+1):(d+d)])^(-1)+1)^(-1), nrow=d,ncol=d)
+    mean_d2 <- diag(psi_pa[n-L+1, (d+1):(d+d)]^(-1), nrow=d,ncol=d)%*%psi_pa[n-L+1,1:d]
     
     for (i in 1:N[l]){
       w_apf[1:(n-L+1), i] <- log(sum(w_*dmvn(X_apf[n-L+1,,], mean_d1%*%(A%*%t(X[n-L,,])[,i] + mean_d2), cov_matrix)))
@@ -285,7 +285,7 @@ Psi <- function(l, n, X_apf, N, L){
     
     #calculate psi_t
     fn <- function(x, X_apf, psi){
-      lambda <-  sum(dmvn(X_apf[t,1:N[l],],x[1:d],
+      lambda <-  2*sum(dmvn(X_apf[t,1:N[l],],x[1:d],
                           diag(x[(d+1):(d+d)], nrow=d,ncol=d))%*%psi[t,1:N[l]])/sum(psi[t,1:N[l]]^2) #2* or not 2*?
       return(sum((psi[t,1:N[l]] - (1/lambda)*dmvn(X_apf[t,1:N[l],],
                                                   x[1:d],diag(x[(d+1):(d+d)], nrow=d,ncol=d)))^2))
@@ -299,9 +299,11 @@ Psi <- function(l, n, X_apf, N, L){
     }else{
       
       psi_pa[t,] <- optim(par = c(X_apf[t,which.max(psi[t,1:N[l]]),], rep(1, d)), 
-                     fn = fn, X_apf = X_apf, psi = psi, method='L-BFGS-B',
-                   lower=c(rep(-Inf, d),rep(0.3, d)), upper=rep(Inf, 2*d))$par
-      #
+                                          fn = fn, X_apf = X_apf, psi = psi, method='L-BFGS-B',
+                                        lower=c(rep(-Inf, d),rep(0.3, d)), upper=rep(Inf, 2*d))$par
+      #optim(par = c(X_apf[t,which.max(psi[t,1:N[l]]),], rep(1, d)), 
+      #                fn = fn, X_apf = X_apf, psi = psi, method='L-BFGS-B',
+      #              lower=c(rep(-Inf, d),rep(0.3, d)), upper=rep(Inf, 2*d))$par
       #c(X_apf[t,which.max(psi[t,1:N[l]]),], rep(1, d))
       
     }
