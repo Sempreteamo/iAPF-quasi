@@ -13,7 +13,7 @@ N[1] <- Num
 Time = 100
 Lag = 8 #lag can be any integers <= Time which is divided by Time
 alpha = 0.42
-d = 35
+d = 1
 k <- 5
 tau <- 0.5
 kappa = 0.5
@@ -37,13 +37,13 @@ KS_distance <- vector()
 
 Obs <- function(){
   #set.seed(123)
-  X_true[1,] <- rnorm(d)     
+  X_true[1,] <- rmvn(d)     
   for(t in 2:Time){ 
     #set.seed(123)#observations
-    X_true[t,] <- rnorm(d) + A%*%X_true[t-1,]  #t(rnorm(d) + A%*%x)
+    X_true[t,] <- rmvn(d) + A%*%X_true[t-1,]  #t(rmvn(d) + A%*%x)
   }
   #set.seed(123)
-  return(matrix(rnorm(Time*d, X_true, 1), ncol = d))
+  return(matrix(rmvn(Time*d, X_true, 1), ncol = d))
 }
 obs <- Obs()
 
