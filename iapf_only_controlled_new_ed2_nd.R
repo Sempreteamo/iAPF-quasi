@@ -18,7 +18,7 @@ Num_apf <- function(Z, l, k){
 #trans prob
 #N(; Ax, B)
 f <- function(x){
-  return (rnorm(d) + A%*%x)   #trans prob
+  return (rmvn(d) + A%*%x)   #trans prob
 }
 
 #obs prob  
@@ -102,7 +102,7 @@ change_mu <- function(n, w, X, L){
   s <- sample(1:Num, size = Num, replace = TRUE, prob = w_) 
   mus <- X[n-L,,]
   for(i in 1:Num){
-    sam[i,] <- rnorm(d) + A%*%mus[s[i],]
+    sam[i,] <- rmvn(d) + A%*%mus[s[i],]
   }
   return(list(sam, w_))
 }
@@ -165,7 +165,7 @@ init_APF <- function(n, w, X, L){  #pure filtering
   #when n = kL, we use the new distribution
   #I tried to modify the previous paths from 1 to n-L+1
   if(n == L){
-    X_init[1:(n-L+1),,] <- rnorm(N[l]*d)  
+    X_init[1:(n-L+1),,] <- rmvn(N[l]*d)  
     for(i in 1:N[l]){
       w_init[1:(n-L+1),i] <- g(obs[n-L+1,], X_init[n-L+1,i,])  
     }
@@ -347,6 +347,15 @@ psi_APF <- function(n, X_apf, Z_apf, w, X, L){
         
       }else{
         N[l+1] <- N[l]
+      }
+      
+      l <- l+1
+    }else break
+  }
+  
+  #output psi
+  return(list(X_apf, w_apf, psi_pa))
+}
       }
       
       l <- l+1
