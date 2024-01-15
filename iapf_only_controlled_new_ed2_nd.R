@@ -18,7 +18,7 @@ Num_apf <- function(Z, l, k){
 #trans prob
 #N(; Ax, B)
 f <- function(x){
-  return (rmvn(d) + A%*%x)   #trans prob
+  return (rnorm(d) + A%*%x)   #trans prob
 }
 
 #obs prob  
@@ -165,7 +165,7 @@ init_APF <- function(n, w, X, L){  #pure filtering
   #when n = kL, we use the new distribution
   #I tried to modify the previous paths from 1 to n-L+1
   if(n == L){
-    X_init[1:(n-L+1),,] <- rmvn(N[l]*d)  
+    X_init[1:(n-L+1),,] <- rnorm(N[l]*d)  
     for(i in 1:N[l]){
       w_init[1:(n-L+1),i] <- g(obs[n-L+1,], X_init[n-L+1,i,])  
     }
