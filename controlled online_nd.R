@@ -37,13 +37,13 @@ KS_distance <- vector()
 
 Obs <- function(){
   #set.seed(123)
-  X_true[1,] <- rmvn(d)     
+  X_true[1,] <- rmvn(d,0,1)     
   for(t in 2:Time){ 
     #set.seed(123)#observations
-    X_true[t,] <- rmvn(d) + A%*%X_true[t-1,]  #t(rmvn(d) + A%*%x)
+    X_true[t,] <- rmvn(d,0,1) + A%*%X_true[t-1,]  #t(rmvn(d) + A%*%x)
   }
   #set.seed(123)
-  return(matrix(rmvn(Time*d, X_true, 1), ncol = d))
+  return(matrix(rmvn(Time*d, X_true, diag(1,d*Time)), ncol = d))
 }
 obs <- Obs()
 
@@ -274,7 +274,7 @@ dKS <- function(X, w_, specific_time) {
   f <- pnorm(X_[specific_time,,], mean = fks_mean, sd = sqrt(fks_var)) 
   d <- abs(f - cumsum_w)
   return(max(d))
-}.
+}
 
 #KS_distance <- dKS(X, w_, specific)
 normalizing_c <- exp(Z-fkf.obj_Z)

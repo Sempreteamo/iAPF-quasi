@@ -356,12 +356,3 @@ psi_APF <- function(n, X_apf, Z_apf, w, X, L){
   #output psi
   return(list(X_apf, w_apf, psi_pa))
 }
-      }
-      
-      l <- l+1
-    }else break
-  }
-  
-  #output psi
-  return(list(X_apf, w_apf, psi_pa))
-}
