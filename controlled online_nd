@@ -10,10 +10,10 @@ set.seed(1)
 Num <- 200 #total number of particles
 N <- vector()
 N[1] <- Num
-Time = 200
-Lag = 20 #lag can be any integers <= Time which is divided by Time
+Time = 100
+Lag = 8 #lag can be any integers <= Time which is divided by Time
 alpha = 0.42
-d = 2
+d = 35
 k <- 5
 tau <- 0.5
 kappa = 0.5
@@ -236,9 +236,10 @@ for(specific in 1:Time){
   fks_mean <- output_s[[1]]
   fks_cov <- output_s[[2]]
   MH_distance[specific] <- mahalanobis(weighted_mean, fks_mean, fks_cov)/d
-  print(MH_distance[specific])
 }
 
+plot(MH_distance)
+normalizing_c <- exp(Z-fkf.obj_Z)
 
 
 #Calculation of the mean and variance of empirical distribution
@@ -283,4 +284,3 @@ for(specific in 1:Time){
   KS_distance[specific] <- dKS(X, w_, specific)
 }
 
-normalizing_c <- exp(Z-fkf.obj_Z)
