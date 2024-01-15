@@ -102,7 +102,7 @@ change_mu <- function(n, w, X, L){
   s <- sample(1:Num, size = Num, replace = TRUE, prob = w_) 
   mus <- X[n-L,,]
   for(i in 1:Num){
-    sam[i,] <- rmvn(d) + A%*%mus[s[i],]
+    sam[i,] <- rnorm(d) + A%*%mus[s[i],]
   }
   return(list(sam, w_))
 }
@@ -273,7 +273,11 @@ Psi <- function(l, n, X_apf, N, L){
   #calculate psi
   for(t in n:(n-L+1)){
     if(t == n){
-      psi[t,] <- dmvn(X_apf[t,1:N[l],], obs[t,], D)
+      for(i in 1:N[l]){
+        psi[t,i] <- (1 / ((2 * pi)^(d / 2))) * 
+          exp(-0.5 * t(X_apf[t,i,] - obs[t,]) %*% (X_apf[t,i,] - obs[t,]))
+      }
+      
       
     }else{
       for(i in 1:N[l]){
@@ -283,8 +287,16 @@ Psi <- function(l, n, X_apf, N, L){
       }
     }
     
+    
     #calculate psi_t
     fn <- function(x, X_apf, psi){
+      #lambda <- vector()
+      #for(i in 1:N[l]){
+       # lambda <-  2*sum((1 / ((2 * pi)^(d / 2) * sqrt(prod((x[(d+1):(d+d)])))) * 
+        #                    exp(-0.5 * t(X_apf[t,i,] - x[1:d]) %*% 
+         #                         diag(x[(d+1):(d+d)]^(-1), nrow=d,ncol=d) %*% (X_apf[t,i,] - x[1:d]))%*%
+          #                  psi[t,1:N[l]]))/sum(psi[t,1:N[l]]^2) #2* or not 2*?
+      #}
       lambda <-  2*sum(dmvn(X_apf[t,1:N[l],],x[1:d],
                           diag(x[(d+1):(d+d)], nrow=d,ncol=d))%*%psi[t,1:N[l]])/sum(psi[t,1:N[l]]^2) #2* or not 2*?
       return(sum((psi[t,1:N[l]] - (1/lambda)*dmvn(X_apf[t,1:N[l],],
@@ -347,15 +359,6 @@ psi_APF <- function(n, X_apf, Z_apf, w, X, L){
         
       }else{
         N[l+1] <- N[l]
-      }
-      
-      l <- l+1
-    }else break
-  }
-  
-  #output psi
-  return(list(X_apf, w_apf, psi_pa))
-}
       }
       
       l <- l+1
