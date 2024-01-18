@@ -11,7 +11,7 @@ Num <- 200 #total number of particles
 N <- vector()
 N[1] <- Num
 Time = 200
-Lag = 8 #lag can be any integers <= Time which is divided by Time
+Lag = 16 #lag can be any integers <= Time which is divided by Time
 alpha = 0.42
 d = 2
 k <- 5
@@ -112,20 +112,20 @@ psi_final <- iAPF1(Lag, Lag)
 ####the second layer of iAPF from t=1 to L to obtain psi####
 
 iAPF2 <- function(psi_final, time_step, L1, L) {
-#t = 1, . . . , L/2 to obtain X2, w2 and psi2
+  #t = 1, . . . , L/2 to obtain X2, w2 and psi2
   psi_final <- psi_final
   L1 <- L1
   L <- L
   
-output <- Init(time_step, L1) #pass
-X <- output[[1]] 
-w <- output[[2]]
-psi <- output[[3]]    
-
-####Algorithm####
-
+  output <- Init(time_step, L1) #pass
+  X <- output[[1]] 
+  w <- output[[2]]
+  psi <- output[[3]]    
+  
+  ####Algorithm####
+  
   #start from L/2 to 3L/2 to obtain psi2
-count = 0
+  count = 0
   for(time_step in seq(ceiling(3*L/2),Time, L)){
     #I didn't include any resampling in this step
     #Run iAPF with the initial distribution we defined 
@@ -144,32 +144,32 @@ count = 0
     psi <- output2[[3]]
     
     if(time_step < Time){
-    psi_final[ceiling(3*L/4+1+count*L):ceiling(3*L/4+count*L+ L/2),] <- psi[complete.cases(psi), ][ceiling(L/4 + 1):ceiling(3*L/4),]
+      psi_final[ceiling(3*L/4+1+count*L):ceiling(3*L/4+count*L+ L/2),] <- psi[complete.cases(psi), ][ceiling(L/4 + 1):ceiling(3*L/4),]
     }
     
     if(time_step == Time){
-      psi_final <- rbind(psi_final, psi[complete.cases(psi), ][ceiling(L1/2 + 1):ceiling(L1/2 + Time - nrow(psi_final)),])
+      psi_final <- rbind(psi_final, psi[ceiling(nrow(psi_final) + 1):Time,])
     }
     count = count + 1
   }
-
-if(time_step != Time){
-  time_step <- Time
   
-  output <- init_APF(time_step, w, X, L1)
-  X_apf <- output[[1]]
-  w_apf <- output[[2]]
-  Z_apf <- output[[3]]
+  if(time_step != Time){
+    time_step <- Time
+    
+    output <- init_APF(time_step, w, X, L1)
+    X_apf <- output[[1]]
+    w_apf <- output[[2]]
+    Z_apf <- output[[3]]
+    
+    output2 <- psi_APF(time_step, X_apf, Z_apf, w, X, L1)
+    
+    #smoothing particles
+    X <- output2[[1]]
+    w <- output2[[2]]
+    psi <- output2[[3]]
+    psi_final <- rbind(psi_final, psi[complete.cases(psi), ][ceiling(L1/2 + 1):L1,])
+  }
   
-  output2 <- psi_APF(time_step, X_apf, Z_apf, w, X, L1)
-  
-  #smoothing particles
-  X <- output2[[1]]
-  w <- output2[[2]]
-  psi <- output2[[3]]
-  psi_final <- rbind(psi_final, psi[complete.cases(psi), ][ceiling(L1/2 + 1):L1,])
-}
-
   return(psi_final)
 }
 
@@ -289,4 +289,3 @@ normalizing_c <- exp(Z-fkf.obj_Z)
 for(specific in 1:Time){
   KS_distance[specific] <- dKS(X, w_, specific)
 }
-
