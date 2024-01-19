@@ -298,27 +298,25 @@ Psi <- function(l, n, X_apf, N, L){
           #                  psi[t,1:N[l]]))/sum(psi[t,1:N[l]]^2) #2* or not 2*?
       #}
       lambda <-  2*sum(dmvn(X_apf[t,1:N[l],],x[1:d],
-                          diag(x[(d+1):(d+d)], nrow=d,ncol=d))%*%psi[t,1:N[l]])/sum(psi[t,1:N[l]]^2) #2* or not 2*?
+                          diag(exp(x[(d+1):(d+d)]), nrow=d,ncol=d))%*%psi[t,1:N[l]])/sum(psi[t,1:N[l]]^2) #2* or not 2*?
       return(sum((psi[t,1:N[l]] - (1/lambda)*dmvn(X_apf[t,1:N[l],],
-                                                  x[1:d],diag(x[(d+1):(d+d)], nrow=d,ncol=d)))^2))
+                                                  x[1:d],diag(exp(x[(d+1):(d+d)]), nrow=d,ncol=d)))^2))
     }
     
     #get the distribution of psi_t
     if(t == n){
       psi_pa[t,] <- optim(par = c(colMeans(X_apf[t,1:N[l],]), rep(1, d)),
-                          fn = fn, X_apf = X_apf, psi = psi, method='L-BFGS-B',
-                          lower=c(rep(-Inf, d),rep(0.1, d)), upper=rep(Inf, 2*d))$par
-    }else{
-      
+                          fn = fn, X_apf = X_apf, psi = psi)$par
+    }else{      
       psi_pa[t,] <- optim(par = c(X_apf[t,which.max(psi[t,1:N[l]]),], rep(1, d)), 
-                                          fn = fn, X_apf = X_apf, psi = psi, method='L-BFGS-B',
-                                        lower=c(rep(-Inf, d),rep(0.3, d)), upper=rep(Inf, 2*d))$par
+                                          fn = fn, X_apf = X_apf, psi = psi)$par
+					  
       #optim(par = c(X_apf[t,which.max(psi[t,1:N[l]]),], rep(1, d)), 
       #                fn = fn, X_apf = X_apf, psi = psi, method='L-BFGS-B',
       #              lower=c(rep(-Inf, d),rep(0.3, d)), upper=rep(Inf, 2*d))$par
-      #c(X_apf[t,which.max(psi[t,1:N[l]]),], rep(1, d))
-      
+      #c(X_apf[t,which.max(psi[t,1:N[l]]),], rep(1, d))      
     }
+    psi_pa[t,(d+1):(d+d)] <- exp(psi_pa[t,(d+1):(d+d)])
     
     #print(psi_pa[t, 1])
     #print(obs[t])

@@ -7,14 +7,14 @@ library(mvnfast)
 ##parameters
 start = proc.time()
 set.seed(1)
-Num <- 200 #total number of particles
+Num <- 500 #total number of particles
 N <- vector()
 N[1] <- Num
 Time = 200
-Lag = 16 #lag can be any integers <= Time which is divided by Time
+Lag = 40 #lag can be any integers <= Time which is divided by Time
 alpha = 0.42
-d = 2
-k <- 5
+d = 10
+k <- 16
 tau <- 0.5
 kappa = 0.5
 A <- matrix(nrow = d, ncol = d)
