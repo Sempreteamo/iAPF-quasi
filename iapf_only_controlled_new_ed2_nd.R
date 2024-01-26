@@ -11,6 +11,24 @@ ESS <- function(t,w, is.log=FALSE){
   return(ess)  
 }
 
+residual <- function(t, w){
+  mx <- max(w[t-1,])
+  w_ <- exp(w[t-1,] - mx)/sum(exp(w[t-1,] - mx))
+  
+  Ntm <- as.integer(Num*w_)
+  
+  mix <- unlist(lapply(1:Num, function(i) {rep(i, Ntm[i])}))
+  mr <- Num - sum(Ntm)
+  
+  w_hat <- w_ - Ntm/Num
+  w_hat <- w_hat*Num/mr
+  
+  mix <- c(sample(1:Num, mr, replace = TRUE, prob = w_hat), mix)
+  
+  return(mix)
+  
+} 
+
 Num_apf <- function(Z, l, k){
   return(sd(exp(Z[max(l-k,1):l]-max(Z[max(l-k,1):l])))/mean(exp(Z[max(l-k,1):l]-max(Z[max(l-k,1):l]))))
 }
@@ -186,6 +204,7 @@ init_APF <- function(n, w, X, L){  #pure filtering
       w_ <- exp(w_init[t-1,] - mx)/sum(exp(w_init[t-1,] - mx))
       Z_apf[1] = Z_apf[1] + log(mean(exp(w_init[t-1,] - mx))) + mx
       mix <- sample(1:N[l], N[l], replace = TRUE, prob = w_)
+      #mix <- residual(t, w_init)
       # at the initialization stage, we want filtering particles for psi
       
       for(i in 1:N[l]){
@@ -243,6 +262,7 @@ APF <- function(n, w, X, psi_pa, l, Z_apf, N, L){ #purely filtering particles
       w_ <- exp(w_apf[t-1,1:N[l]]-mx)/sum(exp(w_apf[t-1, 1:N[l]] - mx))
       Z_apf[l] = Z_apf[l] + log(mean(exp(w_apf[t-1,]-mx))) + mx
       mix <- sample(1:N[l],N[l], replace = TRUE, prob = w_)
+      #mix <- residual(t, w_apf)
       
       for(i in 1:N[l]){
         #filtering particles
@@ -292,33 +312,32 @@ Psi <- function(l, n, X_apf, N, L){
     fn <- function(x, X_apf, psi){
       #lambda <- vector()
       #for(i in 1:N[l]){
-       # lambda <-  2*sum((1 / ((2 * pi)^(d / 2) * sqrt(prod((x[(d+1):(d+d)])))) * 
-        #                    exp(-0.5 * t(X_apf[t,i,] - x[1:d]) %*% 
-         #                         diag(x[(d+1):(d+d)]^(-1), nrow=d,ncol=d) %*% (X_apf[t,i,] - x[1:d]))%*%
-          #                  psi[t,1:N[l]]))/sum(psi[t,1:N[l]]^2) #2* or not 2*?
+      # lambda <-  2*sum((1 / ((2 * pi)^(d / 2) * sqrt(prod((x[(d+1):(d+d)])))) * 
+      #                    exp(-0.5 * t(X_apf[t,i,] - x[1:d]) %*% 
+      #                         diag(x[(d+1):(d+d)]^(-1), nrow=d,ncol=d) %*% (X_apf[t,i,] - x[1:d]))%*%
+      #                  psi[t,1:N[l]]))/sum(psi[t,1:N[l]]^2) #2* or not 2*?
       #}
       lambda <-  2*sum(dmvn(X_apf[t,1:N[l],],x[1:d],
-                          diag(x[(d+1):(d+d)], nrow=d,ncol=d))%*%psi[t,1:N[l]])/sum(psi[t,1:N[l]]^2) #2* or not 2*?
+                            diag(exp(x[(d+1):(d+d)]), nrow=d,ncol=d))%*%psi[t,1:N[l]])/sum(psi[t,1:N[l]]^2) #2* or not 2*?
       return(sum((psi[t,1:N[l]] - (1/lambda)*dmvn(X_apf[t,1:N[l],],
-                                                  x[1:d],diag(x[(d+1):(d+d)], nrow=d,ncol=d)))^2))
+                                                  x[1:d], diag(exp(x[(d+1):(d+d)]), nrow=d,ncol=d)))^2))
     }
     
     #get the distribution of psi_t
     if(t == n){
       psi_pa[t,] <- optim(par = c(colMeans(X_apf[t,1:N[l],]), rep(1, d)),
-                          fn = fn, X_apf = X_apf, psi = psi, method='L-BFGS-B',
-                          lower=c(rep(-Inf, d),rep(0.1, d)), upper=rep(Inf, 2*d))$par
+                          fn = fn, X_apf = X_apf, psi = psi)$par
     }else{
       
       psi_pa[t,] <- optim(par = c(X_apf[t,which.max(psi[t,1:N[l]]),], rep(1, d)), 
-                                          fn = fn, X_apf = X_apf, psi = psi, method='L-BFGS-B',
-                                        lower=c(rep(-Inf, d),rep(0.3, d)), upper=rep(Inf, 2*d))$par
+                          fn = fn, X_apf = X_apf, psi = psi)$par
       #optim(par = c(X_apf[t,which.max(psi[t,1:N[l]]),], rep(1, d)), 
       #                fn = fn, X_apf = X_apf, psi = psi, method='L-BFGS-B',
       #              lower=c(rep(-Inf, d),rep(0.3, d)), upper=rep(Inf, 2*d))$par
       #c(X_apf[t,which.max(psi[t,1:N[l]]),], rep(1, d))
       
     }
+    psi_pa[t, (d+1):(d+d)] <- exp(psi_pa[t, (d+1):(d+d)])
     
     #print(psi_pa[t, 1])
     #print(obs[t])
