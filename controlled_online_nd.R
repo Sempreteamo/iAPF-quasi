@@ -6,14 +6,14 @@ library(mvnfast)
 
 ##parameters
 start = proc.time()
-set.seed(1)
+set.seed(123)
 Num <- 200 #total number of particles
 N <- vector()
 N[1] <- Num
 Time = 200
 Lag = 16 #lag can be any integers <= Time which is divided by Time
 alpha = 0.42
-d = 2
+d = 35
 k <- 5
 tau <- 0.5
 kappa = 0.5
@@ -64,8 +64,8 @@ Smoothing <- function(specific_time){
 }
 
 ##Start our iAPF-quasi algorithm
-
-source('iapf_only_controlled_new_ed2_nd.R')
+#source('iapf_only_controlled_new_ed2_nd.R')
+source('iapf_only_controlled_new_ed2_nd_changepsi.R')
 
 ####Initialization####
 iAPF1 <- function(time_step, L) {
@@ -197,10 +197,11 @@ smoothing_APF <- function(psi_pa, N, Time){
     if(ESS(t,w_apf, is.log = TRUE) <= kappa*Num){
       re = re + 1
       mx <- max(w_apf[t-1,])
-      w_ <- exp(w_apf[t-1,1:Num]-mx)/sum(exp(w_apf[t-1, 1:Num] - mx))
+      #w_ <- exp(w_apf[t-1,1:Num]-mx)/sum(exp(w_apf[t-1, 1:Num] - mx))
       Z_apf = Z_apf + log(mean(exp(w_apf[t-1,]-mx))) + mx
       #set.seed(123)
-      mix <- sample(1:Num,Num, replace = TRUE, prob = w_)
+      #mix <- sample(1:Num,Num, replace = TRUE, prob = w_)
+      mix <- residual(t, w_apf)
       X_apf <- X_apf[, mix,, drop = FALSE]
       
       for(i in 1:Num){
@@ -246,46 +247,4 @@ for(specific in 1:Time){
 
 plot(MH_distance)
 normalizing_c <- exp(Z-fkf.obj_Z)
-
-
-#Calculation of the mean and variance of empirical distribution
-#Here 'weighted_mean' is the empirical mean, 'variance' is the empirical variance
-Empirical <- function(X, w_, specific_time){
-  weighted_mean <- sum(w_*X[specific_time,])
-  s_mean <- sum(w_*X[specific_time,]^2)
-  variance <- s_mean - weighted_mean^2
-  return(list(weighted_mean, variance))
-}
-
-#output_e <- Empirical(X, w_, specific)
-#weighted_mean <- output_e[[1]]
-#variance <- output_e[[2]]
-#empirical distribution function
-#the equation of dKS(F, G) below is in the notes
-
-dKS <- function(X, w_, specific_time) {
-  output_s <- Smoothing(specific_time)
-  fks_mean <- output_s[[1]]
-  fks_var <- output_s[[2]]
-  
-  #the replacement of the weights and particles matrices
-  X_ <- X
-  w_c <- w_
-  
-  d <- vector()
-  order <- order(X[specific_time,,])
-  X_[specific_time,,] <- sort(X[specific_time,,])
-  w_c <- w_[order]
-  cumsum_w <- cumsum(w_c)
-  f <- pnorm(X_[specific_time,,], mean = fks_mean, sd = sqrt(fks_var)) 
-  d <- abs(f - cumsum_w)
-  return(max(d))
-}.
-
-#KS_distance <- dKS(X, w_, specific)
-normalizing_c <- exp(Z-fkf.obj_Z)
-#KS_distance_start <- dKS(X, w_, specific1)
-
-for(specific in 1:Time){
-  KS_distance[specific] <- dKS(X, w_, specific)
-}
+normalizing_c
