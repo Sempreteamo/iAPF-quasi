@@ -55,7 +55,7 @@ mu_aux <- function(psi_pa, l, N, t){
 #twisted g
 g_aux <- function(y, x, t, psi_pa, n, L){  
   if(t == (n-L+1)){
-    return(g(y, x) + psi_tilda(x, psi_pa, t, n) -(d/2)*log((2*pi))-(1/2)*log(det(diag(psi_pa[t, (d+1):(d+d)]+1, nrow=d,ncol=d))) - 
+    return(g(y, x) + psi_tilda(x, psi_pa, t, n) -(d/2)*log(2*pi)-(1/2)*log(det(diag(psi_pa[t, (d+1):(d+d)]+1, nrow=d,ncol=d))) - 
              (1/2)*t(-psi_pa[t, 1:d])%*%
              diag((psi_pa[t, (d+1):(d+d)]+1)^(-1), nrow=d,ncol=d)%*%
              (-psi_pa[t, 1:d]) - psi_t(x, psi_pa, t, n))  #initialisation of g = t=1 or t=L?
@@ -63,6 +63,15 @@ g_aux <- function(y, x, t, psi_pa, n, L){
     return(g(y, x) + psi_tilda(x, psi_pa, t, n) - psi_t(x, psi_pa, t, n))  #g_2:T 
   }
 }
+
+#t=n-L+1 in APF for n!=L
+g_transition <- function(y, x, t, psi_pa, n){
+  return(g(y, x) + psi_tilda(x, psi_pa, t, n) -
+            psi_t(x, psi_pa, t, n))
+}
+#(1/2)*t(-psi_pa[t, 1:d])%*%
+ # diag((psi_pa[t, (d+1):(d+d)]+1)^(-1), nrow=d,ncol=d)%*%
+  #(-psi_pa[t, 1:d])
 
 g_aux_smoo <- function(y, x, t, psi_pa, n){  
   if(t == 1){
@@ -196,16 +205,18 @@ init_APF <- function(n, w, X, L){  #pure filtering
   }else{
     output <- change_mu(n, w, X, L)
     X_init[1:(n-L+1),,] <- output[[1]]
-    w_ <- 1
+    w_ <- output[[2]]
+   #log(sum(w_[i]*dmvn(X_init[n-L+1,,], A%*%X[n-L,i,], B)))
     
     for (i in 1:Num){
-      w_init[1:(n-L+1), i] <- log(sum(w_*dmvn(X_init[n-L+1,,], A%*%X[n-L,i,], B)))
+     w_init[1:(n-L+1), i] <- g(obs[n-L+1,], X_init[n-L+1,i,]) 
     }
+    
   }
   
   for(t in (n-L+2):n){
     
-    if(ESS(t, w_init, is.log=TRUE) <= kappa*N[l]){
+    #if(ESS(t, w_init, is.log=TRUE) <= kappa*N[l]){
       mx <- max(w_init[t-1,])
       w_ <- exp(w_init[t-1,] - mx)/sum(exp(w_init[t-1,] - mx))
       Z_apf[1] = Z_apf[1] + log(mean(exp(w_init[t-1,] - mx))) + mx
@@ -218,12 +229,12 @@ init_APF <- function(n, w, X, L){  #pure filtering
         w_init[t,i] <- g(obs[t,], X_init[t,i,])  
       }
       
-    }else{
+    #}else{
       for(i in 1:N[l]){
         X_init[t,i,] <- f(X_init[t-1,i,]) 
         w_init[t,i] <- w_init[t-1,i] + g(obs[t,], X_init[t,i,])  
       }
-    }
+    #}
   }
   
   mx <- max(w_init[n, 1:N[l]])
@@ -252,21 +263,25 @@ APF <- function(n, w, X, psi_pa, l, Z_apf, N, L){ #purely filtering particles
   }else{
     output <- change_mupsi(n, w, X, psi_pa, n-L+1, N, l, L)
     X_apf[1:(n-L+1),1:N[l],] <- output[[1]]
-    w_ <- 1
+    w_ <- output[[2]]
     
-    value <- t(A%*%t(X[n-L,,]))
-    cov_matrix <-  diag(((psi_pa[n-L+1, (d+1):(d+d)])^(-1)+1)^(-1), nrow=d,ncol=d)
-    mean_d1 <- diag(((psi_pa[n-L+1, (d+1):(d+d)])^(-1)+1)^(-1), nrow=d,ncol=d)
-    mean_d2 <- diag(psi_pa[n-L+1, (d+1):(d+d)]^(-1), nrow=d,ncol=d)%*%psi_pa[n-L+1,1:d]
-    
-    for (i in 1:N[l]){
-      w_apf[1:(n-L+1), i] <- log(sum(w_*dmvn(X_apf[n-L+1,,], mean_d1%*%(A%*%t(X[n-L,,])[,i] + mean_d2), cov_matrix)))
+    sum <- 0
+    for(i in 1:N[l]){
+      sum <- sum + w_[i]*((2*pi)*det(diag(psi_pa[n-L+1, (d+1):(d+d)]+1, nrow=d,ncol=d)))^(-1/2)*
+        exp(-(1/2)*t(A%*%X_apf[n-L,i,] - psi_pa[n-L+1, 1:d])%*%diag((psi_pa[n-L+1, (d+1):(d+d)]+1)^(-1), nrow=d,ncol=d)%*%
+              (A%*%X_apf[n-L,i,] - psi_pa[n-L+1, 1:d]))
     }
+    
+   
+    for (i in 1:N[l]){
+      w_apf[1:(n-L+1), i] <- g_transition(obs[n-L+1,], X_apf[n-L+1,i,],n-L+1, psi_pa, n) + log(sum)
+    }
+    
   }
   
   for(t in (n-L+2):n){
     
-    if(ESS(t,w_apf, is.log = TRUE) <= kappa*N[l]){
+    #if(ESS(t,w_apf, is.log = TRUE) <= kappa*N[l]){
       
       mx <- max(w_apf[t-1,])
       w_ <- exp(w_apf[t-1,1:N[l]]-mx)/sum(exp(w_apf[t-1, 1:N[l]] - mx))
@@ -279,14 +294,14 @@ APF <- function(n, w, X, psi_pa, l, Z_apf, N, L){ #purely filtering particles
         X_apf[t,i,] <- f_aux(X_apf[t-1, mix[i],], psi_pa, t)
         w_apf[t,i] <- g_aux(obs[t,], X_apf[t,i,], t, psi_pa, n, L) 
       }
-    }else{
+   # }else{
       
       for(i in 1:N[l]){
         #filtering particles
         X_apf[t,i,] <- f_aux(X_apf[t-1,i,], psi_pa, t) 
         w_apf[t,i] <- w_apf[t-1,i] + g_aux(obs[t,], X_apf[t,i,], t, psi_pa, n, L)
       }
-    }
+    #}
     
   }
   mx <- max(w_apf[n, 1:N[l]])
