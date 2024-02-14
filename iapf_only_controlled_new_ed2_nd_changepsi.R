@@ -141,7 +141,7 @@ change_mupsi <- function(n, w, X, psi_pa, t, N, l, L){
   sam <- matrix(0,Num,d)
   w_adj <- vector()
   mx <- max(w[n-L,])
-  w_ <- exp(w[n-L,]-mx)/sum(exp(w[n-L,] - mx))
+  w_ <- exp(w[n-L,]-mx)/sum(exp(w[n-L,] - mx)) #normalized weights of w[n-L,]
   #here we need to adjust the weights 
   
   for(i in 1:Num){
@@ -150,34 +150,30 @@ change_mupsi <- function(n, w, X, psi_pa, t, N, l, L){
     }
   
   mx <- max(w_adj)
-  w_ <- exp(w_adj-mx)/sum(exp(w_adj - mx))
-  #mx <- max(w[n-L,])
-  #w_ <- exp(w[n-L,]-mx)/sum(exp(w[n-L,] - mx))
-  s <- sample(1:Num, size = Num, replace = TRUE, prob = w_) 
+  w_tilda <- exp(w_adj-mx)/sum(exp(w_adj - mx)) #adjusted normalized weights
+  s <- sample(1:Num, size = Num, replace = TRUE, prob = w_tilda) 
   mus <- X[n-L,,]
   
+  #use the adjusted normalized weights to generate particles
   for(i in 1:N[l]){
     sam[i,] <- rmvn(1,  diag((psi_pa[t, (d+1):(d+d)]^(-1)+1)^(-1), nrow=d,ncol=d)%*%
                   (diag(psi_pa[t, (d+1):(d+d)]^(-1), nrow=d,ncol=d)%*%psi_pa[t,1:d] + A%*%mus[s[i],]),
                 diag((psi_pa[t, (d+1):(d+d)]^(-1)+1)^(-1), nrow=d,ncol=d))
   }
   
-  mx <- max(w[n-L,])
-  w_ <- exp(w[n-L,]-mx)/sum(exp(w[n-L,] - mx))
-  
+
+  #calculate the normalizing constant
   sum_ <- 0
   for(i in 1:N[l]){
-    #sam[i,] <- f_aux(mus[s[i],], psi_pa, t)
-    #sam[i,] <- rmvn(1,  diag((psi_pa[t, (d+1):(d+d)]^(-1)+1)^(-1), nrow=d,ncol=d)%*%(diag(psi_pa[t, (d+1):(d+d)]^(-1), nrow=d,ncol=d)%*%psi_pa[t,1:d]),
-     #               diag((psi_pa[t, (d+1):(d+d)]^(-1)+1)^(-1), nrow=d,ncol=d))
     sum_ = sum_ + w_[i]*
-      exp((-1/2)*t(A%*%mus[s[i],] - psi_pa[t,1:d])%*%diag((psi_pa[t, (d+1):(d+d)]+1)^(-1), nrow=d,ncol=d)%*%
-            (A%*%mus[s[i],] - psi_pa[t,1:d]))
+      exp((-1/2)*t(A%*%X[n-L,i,] - psi_pa[t,1:d])%*%diag((psi_pa[t, (d+1):(d+d)]+1)^(-1), nrow=d,ncol=d)%*%
+            (A%*%X[n-L,i,] - psi_pa[t,1:d]))
     
   }
-  sum_ <- (2*pi*det(diag(psi_pa[t, (d+1):(d+d)]+1, nrow=d,ncol=d)))^(-1/2)*sum_
-  #sam <- sam/sum_[1,1]
-  return(list(sam, w_, sum_))
+  #psi_tilda_0 = sum(w_i*z_c^i)
+  sum_ <- (2*pi)^(-1/2)*(det(diag(psi_pa[t, (d+1):(d+d)]+1, nrow=d,ncol=d)))^(-1/2)*sum_
+  
+  return(list(sam, sum_))
 }
 
 ####iapf
@@ -282,19 +278,8 @@ APF <- function(n, w, X, psi_pa, l, Z_apf, N, L){ #purely filtering particles
   }else{
     output <- change_mupsi(n, w, X, psi_pa, n-L+1, N, l, L)
     X_apf[1:(n-L+1),1:N[l],] <- output[[1]]
-    w_ <- output[[2]]
-    sum_ <- output[[3]]
-    #mx <- max(w[n-L,])
-    #w_ <- exp(w[n-L,]-mx)/sum(exp(w[n-L,] - mx))
+    sum_ <- output[[2]]
     
-    #sum_ <- 0
-    #for(i in 1:N[l]){
-    #  sum_ <- sum_ + w_[i]*(2*pi)^(-d/2)*(det(diag(psi_pa[n-L+1, (d+1):(d+d)]+1, nrow=d,ncol=d)))^(-1/2)*
-     #   exp(-(1/2)*t(A%*%X_apf[n-L,i,] - psi_pa[n-L+1, 1:d])%*%diag((psi_pa[n-L+1, (d+1):(d+d)]+1)^(-1), nrow=d,ncol=d)%*%
-      #        (A%*%X_apf[n-L,i,] - psi_pa[n-L+1, 1:d]))
-    #}
-    
-   
     for (i in 1:N[l]){
       w_apf[1:(n-L+1), i] <- g_transition(obs[n-L+1,], X_apf[n-L+1,i,],n-L+1, psi_pa, n) + log(sum_)
     }
