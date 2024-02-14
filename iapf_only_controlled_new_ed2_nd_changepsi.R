@@ -235,8 +235,8 @@ init_APF <- function(n, w, X, L){  #pure filtering
       mx <- max(w_init[t-1,])
       w_ <- exp(w_init[t-1,] - mx)/sum(exp(w_init[t-1,] - mx))
       Z_apf[1] = Z_apf[1] + log(mean(exp(w_init[t-1,] - mx))) + mx
-      mix <- sample(1:N[l], N[l], replace = TRUE, prob = w_)
-      #mix <- residual(t, w_init)
+      #mix <- sample(1:N[l], N[l], replace = TRUE, prob = w_)
+      mix <- residual(t, w_init)
       # at the initialization stage, we want filtering particles for psi
       
       for(i in 1:N[l]){
@@ -293,8 +293,8 @@ APF <- function(n, w, X, psi_pa, l, Z_apf, N, L){ #purely filtering particles
       mx <- max(w_apf[t-1,])
       w_ <- exp(w_apf[t-1,1:N[l]]-mx)/sum(exp(w_apf[t-1, 1:N[l]] - mx))
       Z_apf[l] = Z_apf[l] + log(mean(exp(w_apf[t-1,]-mx))) + mx
-      mix <- sample(1:N[l],N[l], replace = TRUE, prob = w_)
-      #mix <- residual(t, w_apf)
+      #mix <- sample(1:N[l],N[l], replace = TRUE, prob = w_)
+      mix <- residual(t, w_apf)
       
       for(i in 1:N[l]){
         #filtering particles
