@@ -55,7 +55,7 @@ mu_aux <- function(psi_pa, l, N, t){
 #twisted g
 g_aux <- function(y, x, t, psi_pa, n, L){  
   if(t == (n-L+1)){
-    return(g(y, x) + psi_tilda(x, psi_pa, t, n) -(d/2)*log(2*pi)-(1/2)*log(det(diag(psi_pa[t, (d+1):(d+d)]+1, nrow=d,ncol=d))) - 
+    return(g(y, x) + psi_tilda(x, psi_pa, t, n) -(1/2)*log(2*pi)-(1/2)*log(det(diag(psi_pa[t, (d+1):(d+d)]+1, nrow=d,ncol=d))) - 
              (1/2)*t(-psi_pa[t, 1:d])%*%
              diag((psi_pa[t, (d+1):(d+d)]+1)^(-1), nrow=d,ncol=d)%*%
              (-psi_pa[t, 1:d]) - psi_t(x, psi_pa, t, n))  #initialisation of g = t=1 or t=L?
@@ -75,7 +75,7 @@ g_transition <- function(y, x, t, psi_pa, n){
 
 g_aux_smoo <- function(y, x, t, psi_pa, n){  
   if(t == 1){
-    return(g(y, x) + psi_tilda(x, psi_pa, t, n) -(d/2)*log((2*pi))-(1/2)*log(det(diag(psi_pa[t, (d+1):(d+d)]+1, nrow=d,ncol=d))) - 
+    return(g(y, x) + psi_tilda(x, psi_pa, t, n) -(1/2)*log((2*pi))-(1/2)*log(det(diag(psi_pa[t, (d+1):(d+d)]+1, nrow=d,ncol=d))) - 
              (1/2)*t(-psi_pa[t, 1:d])%*%
              diag((psi_pa[t, (d+1):(d+d)]+1)^(-1), nrow=d,ncol=d)%*%
              (-psi_pa[t, 1:d]) - psi_t(x, psi_pa, t, n))  #initialisation of g = t=1 or t=L?
@@ -96,7 +96,7 @@ psi_tilda <- function(x, psi_pa, t, n){  #from 0 to T. 0,T = 1
   if(t == n){
     psi_tilda <- 0
   }else{   #psi_pa_t = psi_t
-    psi_tilda <- (-d/2)*log(2*pi) -(1/2)*log(det(diag(psi_pa[t+1, (d+1):(d+d)]+1, nrow=d, ncol=d))) +
+    psi_tilda <- (-1/2)*log(2*pi) -(1/2)*log(det(diag(psi_pa[t+1, (d+1):(d+d)]+1, nrow=d, ncol=d))) +
       (-1/2)*t(A%*%x - psi_pa[t+1, 1:d])%*%diag((psi_pa[t+1, (d+1):(d+d)]+1)^(-1), nrow=d,ncol=d)%*%
       (A%*%x-psi_pa[t+1, 1:d]) 
   }
@@ -108,7 +108,7 @@ psi_t <- function(x, psi_pa, t, n){
   if(t == (n + 1)){
     psi_t <- 0
   }else{
-    psi_t <- -(d/2)*log(2*pi) -(1/2)*log(det(diag(psi_pa[t, (d+1):(d+d)], nrow=d,ncol=d))) +						
+    psi_t <- -(1/2)*log(2*pi) -(1/2)*log(det(diag(psi_pa[t, (d+1):(d+d)], nrow=d,ncol=d))) +						
       (-1/2)*t(x-psi_pa[t, 1:d])%*%diag((psi_pa[t, (d+1):(d+d)])^(-1), nrow=d,ncol=d)%*%						
       (x-psi_pa[t, 1:d])
   }
@@ -165,7 +165,7 @@ change_mupsi <- function(n, w, X, psi_pa, t, N, l, L){
   #calculate the normalizing constant
   sum_ <- 0
   for(i in 1:N[l]){
-    sum_ = sum_ + w_[i]*
+    sum_ = sum_ + exp(w[n-L,i])*
       exp((-1/2)*t(A%*%X[n-L,i,] - psi_pa[t,1:d])%*%diag((psi_pa[t, (d+1):(d+d)]+1)^(-1), nrow=d,ncol=d)%*%
             (A%*%X[n-L,i,] - psi_pa[t,1:d]))
     
@@ -213,9 +213,9 @@ init_APF <- function(n, w, X, L){  #pure filtering
   #}
   
   if(n == L){
-    X_init[1:(n-L+1),,] <- rnorm(N[l]*d)  
+    X_init[1,,] <- rnorm(N[l]*d)  
     for(i in 1:N[l]){
-      w_init[1:(n-L+1),i] <- g(obs[n-L+1,], X_init[n-L+1,i,])  
+      w_init[1,i] <- g(obs[1,], X_init[1,i,])  
     }
   }else{
     output <- change_mu(n, w, X, L)
@@ -235,8 +235,8 @@ init_APF <- function(n, w, X, L){  #pure filtering
       mx <- max(w_init[t-1,])
       w_ <- exp(w_init[t-1,] - mx)/sum(exp(w_init[t-1,] - mx))
       Z_apf[1] = Z_apf[1] + log(mean(exp(w_init[t-1,] - mx))) + mx
-      #mix <- sample(1:N[l], N[l], replace = TRUE, prob = w_)
-      mix <- residual(t, w_init)
+      mix <- sample(1:N[l], N[l], replace = TRUE, prob = w_)
+      #mix <- residual(t, w_init)
       # at the initialization stage, we want filtering particles for psi
       
       for(i in 1:N[l]){
@@ -271,9 +271,9 @@ APF <- function(n, w, X, psi_pa, l, Z_apf, N, L){ #purely filtering particles
    # w_apf[1:(n-L+1),i] <- g_aux(obs[n-L+1,], X_apf[n-L+1,i,],n-L+1, psi_pa, n, L) 
   #}
   if(n == L){
-    X_apf[1:(n-L+1),1:N[l],] <- mu_aux(psi_pa, l, N, n-L+1)
+    X_apf[1,1:N[l],] <- mu_aux(psi_pa, l, N, 1)
     for(i in 1:N[l]){
-      w_apf[1:(n-L+1),i] <- g_aux(obs[n-L+1,], X_apf[n-L+1,i,],n-L+1, psi_pa, n, L) 
+      w_apf[1,i] <- g_aux(obs[1,], X_apf[1,i,],1, psi_pa, n, L) 
     }
   }else{
     output <- change_mupsi(n, w, X, psi_pa, n-L+1, N, l, L)
@@ -293,8 +293,8 @@ APF <- function(n, w, X, psi_pa, l, Z_apf, N, L){ #purely filtering particles
       mx <- max(w_apf[t-1,])
       w_ <- exp(w_apf[t-1,1:N[l]]-mx)/sum(exp(w_apf[t-1, 1:N[l]] - mx))
       Z_apf[l] = Z_apf[l] + log(mean(exp(w_apf[t-1,]-mx))) + mx
-      #mix <- sample(1:N[l],N[l], replace = TRUE, prob = w_)
-      mix <- residual(t, w_apf)
+      mix <- sample(1:N[l],N[l], replace = TRUE, prob = w_)
+      #mix <- residual(t, w_apf)
       
       for(i in 1:N[l]){
         #filtering particles
