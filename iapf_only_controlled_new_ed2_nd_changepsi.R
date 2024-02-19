@@ -391,7 +391,7 @@ psi_APF <- function(n, X_apf, Z_apf, w, X, L){
       #APF outputs filtering X_apf for the next psi, and smoothing X_apf_s
       #for the final calculation
       
-      output <- APF(n, w, X, psi_pa, l, Z_apf, N, L)
+      output <- APF(n, w, X_apf, psi_pa, l, Z_apf, N, L)
       X_apf <- output[[1]]
       w_apf <- output[[2]]
       Z_apf <- output[[3]]
